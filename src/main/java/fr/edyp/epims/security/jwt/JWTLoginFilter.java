@@ -21,10 +21,10 @@ package fr.edyp.epims.security.jwt;
 import java.io.IOException;
 import java.util.Collections;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 
 import org.springframework.security.authentication.AuthenticationManager;
@@ -32,13 +32,16 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+
 
 public class JWTLoginFilter extends AbstractAuthenticationProcessingFilter {
 
-    public JWTLoginFilter(String url, AuthenticationManager authManager) {
-        super(new AntPathRequestMatcher(url));
+    private final TokenAuthenticationService tokenSecretService;
+
+    public JWTLoginFilter(String url, AuthenticationManager authManager,TokenAuthenticationService tokenSecretService) {
+        super(request -> request.getRequestURI().equals(url));
         setAuthenticationManager(authManager);
+        this.tokenSecretService = tokenSecretService;
     }
 
     @Override
@@ -62,7 +65,7 @@ public class JWTLoginFilter extends AbstractAuthenticationProcessingFilter {
         //System.out.println("JWTLoginFilter.successfulAuthentication:");
 
         // Write Authorization to Headers of Response.
-        TokenAuthenticationService.addAuthentication(response, authResult.getName());
+        tokenSecretService.addAuthentication(response, authResult.getName());
 
         //String authorizationString = response.getHeader("Authorization");
 

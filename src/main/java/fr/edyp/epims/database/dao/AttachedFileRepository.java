@@ -25,7 +25,7 @@ import java.util.List;
 
 public interface AttachedFileRepository extends JpaRepository<AttachedFile, Integer> {
 
-    @Query("SELECT DISTINCT af FROM AttachedFile af, FileLink fl WHERE fl.idFk=:studyId AND fl.associatedEntity='study' AND fl.attachedFile=af.id")
-    public List<AttachedFile> findAttachedFilesForStudy(int studyId);
+    @Query("SELECT DISTINCT af FROM AttachedFile af, FileLink fl WHERE fl.idFk=:studyId AND fl.associatedEntity='study' AND fl.attachedFile.id=af.id")
+    public List<AttachedFile> findAttachedFilesForStudyId(int studyId);
 
 }

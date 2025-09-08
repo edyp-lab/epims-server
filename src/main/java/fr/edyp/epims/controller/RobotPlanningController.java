@@ -325,7 +325,7 @@ public class RobotPlanningController {
 
             Sample sample = robotPlanning.getSample();
             sampleSet.add(sample);
-            Support support = new Support(sample, new Integer(0), null, null, null, null);
+            Support support = new Support(sample, 0, null, null, null, null);
             support = supportRepository.save(support);
             Tube tube = new Tube(support);
             tube = tubeRepository.save(tube);

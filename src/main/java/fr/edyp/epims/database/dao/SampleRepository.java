@@ -27,11 +27,11 @@ import java.util.Optional;
 
 public interface SampleRepository extends JpaRepository<Sample, String> {
 
-    List<Sample> findByStudy(Integer id);
+    List<Sample> findByStudyId(Integer studyId);
 
     Optional<Sample> findByName(String name);
 
-    @Query(value = "SELECT s FROM Sample as s, TreatmentsApplication as ta WHERE s.treatments.id=ta.treatments.id and ta.protocolApplication.id= :paId) ")
+    @Query(value = "SELECT s FROM Sample as s, TreatmentsApplication as ta WHERE s.treatments.id=ta.treatments.id and ta.protocolApplication.id= :paId ")
     List<Sample> findByProtocolApplication(@Param("paId") Integer paId);
 
 }

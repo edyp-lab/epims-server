@@ -1,6 +1,6 @@
 package fr.edyp.epims.database.entities;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "analysis_price_item", schema = "public")

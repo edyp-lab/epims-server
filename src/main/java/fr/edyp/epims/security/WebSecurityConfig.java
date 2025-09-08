@@ -21,21 +21,24 @@ import fr.edyp.epims.security.jwt.AuthEntryPointJwt;
 import fr.edyp.epims.security.jwt.AuthTokenFilter;
 import fr.edyp.epims.security.jwt.JWTAuthenticationFilter;
 import fr.edyp.epims.security.jwt.JWTLoginFilter;
+import fr.edyp.epims.security.jwt.TokenAuthenticationService;
 import fr.edyp.epims.security.services.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.http.HttpMethod;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+//import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 
@@ -47,28 +50,32 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 		// securedEnabled = true,
 		// jsr250Enabled = true,
 		prePostEnabled = true)
-public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+public class WebSecurityConfig  {
 	@Autowired
 	UserDetailsServiceImpl userDetailsService;
 
 	@Autowired
 	private AuthEntryPointJwt unauthorizedHandler;
 
+	//Used to get secret key at build
+	@Autowired
+	private TokenAuthenticationService tokenService;
+
 	@Bean
 	public AuthTokenFilter authenticationJwtTokenFilter() {
 		return new AuthTokenFilter();
 	}
 
-	@Override
-	public void configure(AuthenticationManagerBuilder authenticationManagerBuilder) throws Exception {
-		authenticationManagerBuilder.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder());
-	}
+//	@Override
+//	public void configure(AuthenticationManagerBuilder authenticationManagerBuilder) throws Exception {
+//		authenticationManagerBuilder.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder());
+//	}
 
-	@Bean
-	@Override
-	public AuthenticationManager authenticationManagerBean() throws Exception {
-		return super.authenticationManagerBean();
-	}
+//	@Bean
+//	@Override
+//	public AuthenticationManager authenticationManagerBean() throws Exception {
+//		return super.authenticationManagerBean();
+//	}
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
@@ -95,7 +102,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 		//return new BCryptPasswordEncoder();
 	}
 
-	@Override
+//	@Override
 	/*
 	protected void configure(HttpSecurity http) throws Exception {
 		http.cors().and().csrf().disable()
@@ -110,35 +117,43 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 		http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
 	}*/
 
-	protected void configure(HttpSecurity http) throws Exception {
-		http.csrf().disable().authorizeRequests()
-				// No need authentication.
-				.antMatchers("/").permitAll() //
-				.antMatchers(HttpMethod.POST, "/login").permitAll() //
+	@Bean
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+		return config.getAuthenticationManager();
+	}
+
+//	protected void configure(HttpSecurity http) throws Exception {
+
+	@Bean
+	public SecurityFilterChain filterChain(HttpSecurity http, AuthenticationManager authManager) throws Exception {
+
+		http.csrf( csrf -> csrf.disable()).authorizeHttpRequests(authz -> authz
+				.requestMatchers("/").permitAll() //
+				.requestMatchers(HttpMethod.POST, "/login").permitAll() //
 				//.antMatchers(HttpMethod.GET, "/login").permitAll() // For Test on Browser
-				.antMatchers(HttpMethod.GET, "/api/contacts").permitAll() // not secured URL
-				.antMatchers(HttpMethod.GET, "/api/databaseversion").permitAll()
-				.antMatchers(HttpMethod.GET, "/api/spectrometers").permitAll()
-				.antMatchers(HttpMethod.GET, "/api/samplespecies").permitAll()
-				.antMatchers(HttpMethod.GET, "/api/sampletypes").permitAll()
-				.antMatchers(HttpMethod.GET, "/api/companies").permitAll()
-				.antMatchers(HttpMethod.GET, "/api/actors").permitAll()
-				.antMatchers(HttpMethod.GET, "/api/acquisitiontypes").permitAll()
-				.antMatchers(HttpMethod.GET, "/api/fixfilelink").permitAll()
-				.antMatchers(HttpMethod.GET, "/api/acquisitionsSearch/{searchText}/{acquisitionType}/{instrumentId}/{studyMemberActorKey}/{startDate}/{endDate}").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/contacts").permitAll() // not secured URL
+				.requestMatchers(HttpMethod.GET, "/api/databaseversion").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/spectrometers").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/samplespecies").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/sampletypes").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/companies").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/actors").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/acquisitiontypes").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/fixfilelink").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/acquisitionsSearch/{searchText}/{acquisitionType}/{instrumentId}/{studyMemberActorKey}/{startDate}/{endDate}").permitAll()
 
 				// Need authentication.
-				.anyRequest().authenticated()
+				.anyRequest().authenticated())
 				//
-				.and()
+//				.and()
 				//
 				// Add Filter 1 - JWTLoginFilter
 				//
-				.addFilterBefore(new JWTLoginFilter("/login", authenticationManager()),
-						UsernamePasswordAuthenticationFilter.class)
+				.addFilterBefore(new JWTLoginFilter("/login", authManager, tokenService), UsernamePasswordAuthenticationFilter.class)
 				//
 				// Add Filter 2 - JWTAuthenticationFilter
 				//
-				.addFilterBefore(new JWTAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+				.addFilterBefore(new JWTAuthenticationFilter(tokenService), UsernamePasswordAuthenticationFilter.class);
+		return http.build();
 	}
 }

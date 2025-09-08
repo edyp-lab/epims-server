@@ -21,42 +21,58 @@ package fr.edyp.epims.security.jwt;
 import java.util.Collections;
 import java.util.Date;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
+import io.jsonwebtoken.security.Keys;
+//import lombok.Getter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import org.springframework.stereotype.Component;
 
+@Component
 public class TokenAuthenticationService {
 
     static final long EXPIRATIONTIME = 864_000_000; // 10 days
 
-    static final String SECRET = "epimsSecretKey";
 
-    static final String TOKEN_PREFIX = "Bearer";
+    @Value("${jwt.secret}")
+    private String jwtSecret;
 
-    static final String HEADER_STRING = "Authorization";
+    final String TOKEN_PREFIX = "Bearer";
 
-    public static void addAuthentication(HttpServletResponse res, String username) {
+    final String HEADER_STRING = "Authorization";
+
+    public String getJwtSecret() {
+        return jwtSecret;
+    }
+
+    public void addAuthentication(HttpServletResponse res, String username) {
+
         String JWT = Jwts.builder().setSubject(username)
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATIONTIME))
-                .signWith(SignatureAlgorithm.HS512, SECRET).compact();
+                .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes()), SignatureAlgorithm.HS512).compact();
         res.addHeader(HEADER_STRING, TOKEN_PREFIX + " " + JWT);
     }
 
-    public static Authentication getAuthentication(HttpServletRequest request) {
+    public Authentication getAuthentication(HttpServletRequest request) {
         String token = request.getHeader(HEADER_STRING);
         if (token != null) {
             // parse the token.
-            String user = Jwts.parser().setSigningKey(SECRET).parseClaimsJws(token.replace(TOKEN_PREFIX, "")).getBody()
-                    .getSubject();
+            String user = Jwts.parserBuilder().setSigningKey(Keys.hmacShaKeyFor(jwtSecret.getBytes())).build().parseClaimsJws(token.replace(TOKEN_PREFIX, "")).getBody().getSubject();
 
             return user != null ? new UsernamePasswordAuthenticationToken(user, null, Collections.emptyList()) : null;
         }
         return null;
+    }
+    @PostConstruct
+    public void init() {
+        System.out.println("TokenAuthenticationService.init: jwtSecret=" + jwtSecret);
     }
 
 }

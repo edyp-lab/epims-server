@@ -222,7 +222,7 @@ public class ProjectController {
                     return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
                 }
 
-                p.get().addActor(a.get());
+                p.get().addMember(a.get());
 
             }
             Project projectSaved = projectRepository.save(p.get());

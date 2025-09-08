@@ -173,7 +173,7 @@ public class ProgramController {
                     return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
                 }
 
-                p.get().addActor(a.get());
+                p.get().addMember(a.get());
 
             }
             Program programSaved = programRepository.save(p.get());

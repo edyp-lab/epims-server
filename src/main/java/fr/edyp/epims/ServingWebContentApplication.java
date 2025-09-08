@@ -21,14 +21,20 @@ package fr.edyp.epims;
 import fr.edyp.epims.json.AcquisitionFileMessageJson;
 import fr.edyp.epims.preferences.PreferencesKeys;
 import fr.edyp.epims.preferences.ServerEpimsPreferences;
+import jakarta.persistence.EntityManagerFactory;
 import org.apache.activemq.broker.BrokerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.jms.DefaultJmsListenerContainerFactoryConfigurer;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jms.annotation.EnableJms;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
 import org.springframework.jms.config.JmsListenerContainerFactory;
@@ -38,7 +44,7 @@ import org.springframework.jms.support.converter.MessageConverter;
 import org.springframework.jms.support.converter.MessageType;
 
 
-import javax.jms.ConnectionFactory;
+import jakarta.jms.ConnectionFactory;
 
 import org.springframework.util.ErrorHandler;
 
@@ -47,8 +53,9 @@ import java.util.Map;
 import java.util.prefs.Preferences;
 
 @EnableJms
-@ComponentScan(basePackages = "fr.edyp.epims")
 @SpringBootApplication
+@EntityScan(basePackages = "fr.edyp.epims.database.entities")
+@EnableJpaRepositories(basePackages = "fr.edyp.epims.database.dao")
 public class ServingWebContentApplication {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ServingWebContentApplication.class);

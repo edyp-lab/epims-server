@@ -4,3 +4,4 @@
 # Default ignored files
 /target
 
+/activemq-data/**

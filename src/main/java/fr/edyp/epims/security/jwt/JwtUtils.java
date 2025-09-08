@@ -20,8 +20,11 @@ package fr.edyp.epims.security.jwt;
 import java.util.Date;
 
 import fr.edyp.epims.security.services.UserDetailsImpl;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
@@ -32,28 +35,30 @@ import io.jsonwebtoken.*;
 public class JwtUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(JwtUtils.class);
 
-  //@Value("${fr.edyp.epims.jwtSecret}")
-  private String jwtSecret = TokenAuthenticationService.SECRET;
+  @Autowired
+  private TokenAuthenticationService tokenSecretService;
 
-  //@Value("${fr.edyp.epims.jwtExpirationMs}")
-  private long jwtExpirationMs = TokenAuthenticationService.EXPIRATIONTIME;
+  private final long jwtExpirationMs = TokenAuthenticationService.EXPIRATIONTIME;
 
   public String generateJwtToken(Authentication authentication) {
 
     UserDetailsImpl userPrincipal = (UserDetailsImpl) authentication.getPrincipal();
-
+    String jwtSecret = tokenSecretService.getJwtSecret();
     return Jwts.builder().setSubject((userPrincipal.getUsername())).setIssuedAt(new Date())
-        .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs)).signWith(SignatureAlgorithm.HS512, jwtSecret)
-        .compact();
+        .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
+            .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes()), SignatureAlgorithm.HS512).compact();
   }
 
   public String getUserNameFromJwtToken(String token) {
-    return Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(token).getBody().getSubject();
+    String jwtSecret = tokenSecretService.getJwtSecret();
+    return Jwts.parserBuilder().setSigningKey(Keys.hmacShaKeyFor(jwtSecret.getBytes()))
+            .build().parseClaimsJws(token).getBody().getSubject();
   }
 
   public boolean validateJwtToken(String authToken) {
     try {
-      Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(authToken);
+      String jwtSecret = tokenSecretService.getJwtSecret();
+      Jwts.parserBuilder().setSigningKey(Keys.hmacShaKeyFor(jwtSecret.getBytes())).build().parseClaimsJws(authToken);
       return true;
     } catch (SignatureException e) {
       LOGGER.error("Invalid JWT signature: {}", e.getMessage());

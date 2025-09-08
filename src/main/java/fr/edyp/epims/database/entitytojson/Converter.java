@@ -21,7 +21,6 @@ import fr.edyp.epims.database.entities.*;
 import fr.edyp.epims.json.*;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.Set;
 
 public class Converter {
@@ -112,8 +111,8 @@ public class Converter {
 
 
         ArrayList<String> actorsKey = new ArrayList<String>(0);
-        if (program.getActors() != null) {
-            for (Actor a : program.getActors()) {
+        if (program.getMembers() != null) {
+            for (Actor a : program.getMembers()) {
                 String actorKey = a.getLogin();
                 actorsKey.add(actorKey);
             }
@@ -151,8 +150,8 @@ public class Converter {
         );
 
         ArrayList<String> actorsKey = new ArrayList<String>(0);
-        if (project.getActors() != null) {
-            for (Actor a : project.getActors()) {
+        if (project.getMembers() != null) {
+            for (Actor a : project.getMembers()) {
                 String actorKey = a.getLogin();
                 actorsKey.add(actorKey);
             }
@@ -207,8 +206,8 @@ public class Converter {
         );
 
         ArrayList<String> actorsKey = new ArrayList<>(0);
-        if (study.getActors() != null) {
-            for (Actor a : study.getActors()) {
+        if (study.getMembers() != null) {
+            for (Actor a : study.getMembers()) {
                 String actorKey = a.getLogin();
                 actorsKey.add(actorKey);
             }
@@ -257,8 +256,8 @@ public class Converter {
                 );
 
         ArrayList<String> actorsKey = new ArrayList<>(0);
-        if (study.getActors() != null) {
-            for (Actor a : study.getActors()) {
+        if (study.getMembers() != null) {
+            for (Actor a : study.getMembers()) {
                 String actorKey = a.getLogin();
                 actorsKey.add(actorKey);
             }

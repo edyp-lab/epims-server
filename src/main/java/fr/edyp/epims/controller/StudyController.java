@@ -271,7 +271,7 @@ public class StudyController {
                     return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
                 }
 
-                s.get().addActor(a.get());
+                s.get().addMember(a.get());
 
             }
             Study studySaved = studyRepository.save(s.get());

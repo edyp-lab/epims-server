@@ -25,7 +25,6 @@ import fr.edyp.epims.json.ArchivingInfoJson;
 import fr.edyp.epims.json.ControlAcquisitionArchivableJson;
 import fr.edyp.epims.json.StudyJson;
 import fr.edyp.epims.path.PathManager;
-import fr.edyp.epims.path.ResourceManager;
 import fr.edyp.epims.preferences.PreferencesKeys;
 import fr.edyp.epims.preferences.ServerEpimsPreferences;
 import fr.edyp.epims.util.FileUtils;
@@ -343,7 +342,7 @@ public class ArchivageAsyncService {
 
     private void archiveStudyInDB(Study study)  throws Exception {
 
-        List<AttachedFile> attachedFiles = attachedFileRepository.findAttachedFilesForStudy(study.getId());
+        List<AttachedFile> attachedFiles = attachedFileRepository.findAttachedFilesForStudyId(study.getId());
         for (AttachedFile attachedFile : attachedFiles) {
             attachedFile.setArchived(true);
             attachedFileRepository.save(attachedFile);
