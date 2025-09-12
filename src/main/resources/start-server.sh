@@ -1,0 +1,2 @@
+#!/bin/sh
+java -Xmx2G -jar -Dserver.port=8081 edyp-epims-@version@.jar
