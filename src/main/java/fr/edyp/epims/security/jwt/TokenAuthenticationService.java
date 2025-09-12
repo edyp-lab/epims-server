@@ -26,7 +26,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import io.jsonwebtoken.security.Keys;
-//import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -69,10 +68,6 @@ public class TokenAuthenticationService {
             return user != null ? new UsernamePasswordAuthenticationToken(user, null, Collections.emptyList()) : null;
         }
         return null;
-    }
-    @PostConstruct
-    public void init() {
-        System.out.println("TokenAuthenticationService.init: jwtSecret=" + jwtSecret);
     }
 
 }

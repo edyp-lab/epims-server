@@ -35,7 +35,7 @@ public class ServerEpimsPreferences {
     public static void initPreferences(String path) {
 
         if (path == null) {
-            path = getUserHome()+ File.separator+"EpimsServerPreferences.properties";  // by default Preferences.properties is saved in the local directory of the application
+            path = getDefaultConfigPath()+ File.separator+"EpimsServerPreferences.properties";  // by default Preferences.properties is saved in the local directory of the application
         } else {
             path = path+File.separator+"EpimsServerPreferences.properties";
         }
@@ -46,8 +46,8 @@ public class ServerEpimsPreferences {
     }
 
 
-    private static String getUserHome() {
-        return "./";
+    private static String getDefaultConfigPath() {
+        return "./config";
     }
 
 }

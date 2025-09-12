@@ -1,0 +1,1 @@
+java -Xms512m -Xmx2G -Dserver.port=8081 edyp-epims-@version@.jar
