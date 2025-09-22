@@ -62,18 +62,6 @@ public class PathManager {
     @Autowired
     private PathData m_pathData;
 
-    //private static PathManager m_singleton = null;
-
-    /*private PathManager() {
-
-    }
-
-    public static PathManager getPathManager() {
-        if (m_singleton == null) {
-            m_singleton = new PathManager();
-        }
-        return m_singleton;
-    }*/
 
     public String getStudyPath(Study s) {
         if (s == null) {
@@ -81,18 +69,14 @@ public class PathManager {
         }
 
         String partialPath = getStudyPartialPath(s);
-        LOGGER.debug(" getStudyPath partial for " + s.getNomenclatureTitle() + " = " + partialPath);
+      LOGGER.debug(" getStudyPath partial for {} = {}", s.getNomenclatureTitle(), partialPath);
 
         String containerRepository = getRepositoryFor(partialPath);
         if (containerRepository == null) {
             return null;
         }
 
-        StringBuffer relativePath = new StringBuffer();
-        relativePath.append(containerRepository);
-        relativePath.append("/");
-        relativePath.append(partialPath);
-        return relativePath.toString();
+      return containerRepository +"/" +partialPath;
     }
 
     public String getStudyPartialPath(Study s) {
@@ -102,7 +86,7 @@ public class PathManager {
 
         Project p = s.getProject();
 
-        StringBuffer studyPath = new StringBuffer();
+        StringBuilder studyPath = new StringBuilder();
 
         // Project defined
         if (p != null) {
@@ -129,10 +113,8 @@ public class PathManager {
         String prjPath = getProjectAbsolutePath(p);
         if(prjPath==null)
             return null;
-        StringBuffer fullPath = new StringBuffer(prjPath);
-        fullPath.append("/");
-        fullPath.append(s.getNomenclatureTitle());
-        File f = new File(fullPath.toString());
+        String fullPath = prjPath + "/" + s.getNomenclatureTitle();
+        File f = new File(fullPath);
         if(! f.exists()){
             return null;
         }
@@ -297,7 +279,7 @@ public class PathManager {
         AcquisitionJson acquisitionJson = protocolApplicationJson.getAcquisitionJson();
 
         String wantedAcqPath = null;
-        Optional<ProtocolApplication> protocolApplicationOpt = m_protocolApplicationRepository.findByName(protocolApplicationJson.getName());
+        Optional<ProtocolApplication> protocolApplicationOpt = m_protocolApplicationRepository.findByName(protocolApplicationJson.getName().trim());
         if (protocolApplicationOpt.isPresent()) {
             ProtocolApplication protocolApplication = protocolApplicationOpt.get();
             wantedAcqPath = getExistingAcqPath(protocolApplication);
@@ -316,9 +298,9 @@ public class PathManager {
                 if (acqContext.getSampleDescriptor() != null && acqContext.getSampleDescriptor().getName() !=null){
                     String rawTagName = PathTag.RAW;
 
-                    LOGGER.debug(" --- 4.a Will get Sample "+acqContext.getSampleDescriptor().getName());
+                    LOGGER.debug(" --- 4.a Will get Sample "+acqContext.getSampleDescriptor().getName().trim());
 
-                    Optional<Sample> sampleOpt = m_sampleRepository.findByName(acqContext.getSampleDescriptor().getName());
+                    Optional<Sample> sampleOpt = m_sampleRepository.findByName(acqContext.getSampleDescriptor().getName().trim());
                     if (! sampleOpt.isPresent()) {
                         String errorMessage = "Problem while retrieving sample by name (Context : the wanted acquisition doesn't exist yet) : "+acqContext.getSampleDescriptor().getName();
                         LOGGER.error(errorMessage);

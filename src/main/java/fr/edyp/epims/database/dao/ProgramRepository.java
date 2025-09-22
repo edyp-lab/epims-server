@@ -20,7 +20,13 @@ package fr.edyp.epims.database.dao;
 import fr.edyp.epims.database.entities.Program;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
+
 
 public interface ProgramRepository  extends JpaRepository<Program, Integer> {
 
+
+  Optional<Program> findByTitle(String title);
+
+  Optional<Program> findByNomenclatureTitle(String nomenclature);
 }

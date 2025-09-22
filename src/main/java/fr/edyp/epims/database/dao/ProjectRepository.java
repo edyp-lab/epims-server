@@ -20,6 +20,12 @@ package fr.edyp.epims.database.dao;
 import fr.edyp.epims.database.entities.Project;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
+
 public interface ProjectRepository  extends JpaRepository<Project, Integer> {
+
+  Optional<Project> findByNomenclatureTitle(String nomenclatureTitle);
+
+  Optional<Project> findByTitle(String title);
 
 }
