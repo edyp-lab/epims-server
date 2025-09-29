@@ -31,7 +31,7 @@ public class DatabaseVersionManager {
 
     private static DatabaseVersionManager m_singleton = null;
 
-    private DatabaseVersionJson m_databaseVersion = new DatabaseVersionJson();
+    private final DatabaseVersionJson m_databaseVersion = new DatabaseVersionJson();
 
     private DatabaseVersionManager() {
         m_databaseVersion.setServerVersion(SERVER_VERSION);
@@ -52,7 +52,7 @@ public class DatabaseVersionManager {
 
     public Integer bumpVersion(Class c, String login) {
 
-        LOGGER.info("bumpVersion "+c.getName()+" "+(login != null ? login : ""));
+      LOGGER.info("bumpVersion {} {}", c.getName(), login != null ? login : "");
 
         return m_databaseVersion.bumpVersion(c, login);
     }
@@ -61,7 +61,7 @@ public class DatabaseVersionManager {
 
         Integer version = m_databaseVersion.getVersion(c);
 
-        LOGGER.info("getVersion "+c.getName()+" "+version);
+      LOGGER.info("getVersion {} {}", c.getName(), version);
 
         return version;
     }

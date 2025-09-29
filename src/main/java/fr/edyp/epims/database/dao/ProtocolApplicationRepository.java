@@ -28,5 +28,5 @@ public interface ProtocolApplicationRepository extends JpaRepository<ProtocolApp
     Optional<ProtocolApplication> findByName(String name);
 
     @Query(value = "SELECT pa FROM ProtocolApplication as pa WHERE pa.id>170000")
-    public List<ProtocolApplication> wartPA();
+    List<ProtocolApplication> wartPA();
 }

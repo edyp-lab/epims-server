@@ -34,7 +34,7 @@ public interface VirtualWellRepository extends JpaRepository<VirtualWell, Intege
     void deleteWells(@Param("virtualPlateName") String virtualPlateName);
 
     @Query(value = "SELECT DISTINCT well.robotPlanning FROM VirtualWell well WHERE (well.virtualPlate.name = :virtualPlateName) ")
-    public List<RobotPlanning> findRobotPlanning(@Param("virtualPlateName") String virtualPlateName);
+    List<RobotPlanning> findRobotPlanning(@Param("virtualPlateName") String virtualPlateName);
 
     //@Query(value = "SELECT well, well.robotPlanning FROM VirtualWell well WHERE (well.virtualPlate.name = :virtualPlateName) ")
     //public List<Object[]> findByValues(@Param("virtualPlateName") String virtualPlateName);

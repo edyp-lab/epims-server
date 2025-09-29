@@ -17,14 +17,10 @@
 
 package fr.edyp.epims.database.dao;
 
-import fr.edyp.epims.database.entities.RobotPlanning;
 import fr.edyp.epims.database.entities.TreatmentsApplication;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import java.util.List;
 
 public interface TreatmentsApplicationRepository  extends JpaRepository<TreatmentsApplication, Integer> {
 
@@ -33,7 +29,7 @@ public interface TreatmentsApplicationRepository  extends JpaRepository<Treatmen
     //public Integer maxRank(@Param("treatmentsId") Integer treatmentsId);
 
     @Query(value = "SELECT max(treatApp.rank) FROM treatments_application as treatApp WHERE (treatApp.treatments = :treatmentsId) ", nativeQuery = true)
-    public Integer maxRank(@Param("treatmentsId") Integer treatmentsId);
+    Integer maxRank(@Param("treatmentsId") Integer treatmentsId);
 
 
 }

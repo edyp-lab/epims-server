@@ -1,9 +1,6 @@
 package fr.edyp.epims.database.entities;
 // Generated 10 mai 2021 � 11:47:01 by Hibernate Tools 5.2.12.Final
 
-import jakarta.persistence.AttributeOverride;
-import jakarta.persistence.AttributeOverrides;
-import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

@@ -82,8 +82,8 @@ public class ArchivageAsyncService {
                 archivingAction.setRunning();
 
                 String message;
-                StudyJson studyJson = archivingAction.getStudyJson();;
-                if (studyJson != null) {
+                StudyJson studyJson = archivingAction.getStudyJson();
+              if (studyJson != null) {
                     message = studyArchiving(studyJson);
 
                 } else {
@@ -117,13 +117,13 @@ public class ArchivageAsyncService {
             String archiveRoot = preferences.get(PreferencesKeys.ARCHIVE_ROOT, null);
             if (archiveRoot == null) {
                 message = "In Preferences File ARCHIVE_ROOT is not specified";
-                LOGGER.error("error in /controlarchive  : "+message);
+              LOGGER.error("error in /controlarchive  : {}", message);
                 return message;
             }
             File archiveDirectory = new File(archiveRoot);
             if (!archiveDirectory.exists()) {
                 message = "Archive directory does not exist:"+archiveDirectory.getAbsolutePath();
-                LOGGER.error("error in /controlarchive  : "+message);
+              LOGGER.error("error in /controlarchive  : {}", message);
                 return message;
             }
 
@@ -156,7 +156,7 @@ public class ArchivageAsyncService {
                     }
 
                     message = "Impossible to copy file from " +sourceFilePath+" to "+destinationFilePath;
-                    LOGGER.error("error in /controlarchive  : "+message);
+                  LOGGER.error("error in /controlarchive  : {}", message);
                     return message;
                 }
 
@@ -187,7 +187,7 @@ public class ArchivageAsyncService {
                 }
 
                 message = "Database error while archiving "+archivableData.getInstrument()+" "+archivableData.getYear()+" "+archivableData.getMonth();
-                LOGGER.error("error in /controlarchive  : "+message);
+              LOGGER.error("error in /controlarchive  : {}", message);
                 return message;
             }
 

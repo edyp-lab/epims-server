@@ -21,7 +21,6 @@ package fr.edyp.epims.security.jwt;
 import java.util.Collections;
 import java.util.Date;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 

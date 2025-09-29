@@ -78,6 +78,7 @@ public class GlobalExceptionHandler {
             case ACTOR_NOT_FOUND:
             case CONTACT_NOT_FOUND:
             case STUDY_NOT_FOUND:
+            case ACQUISITION_NOT_FOUND:
             case PROGRAM_NOT_FOUND:
                 return HttpStatus.NOT_FOUND;
             case INVALID_STUDY_DATA:

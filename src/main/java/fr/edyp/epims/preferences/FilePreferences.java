@@ -39,11 +39,11 @@ public class FilePreferences extends AbstractPreferences {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FilePreferences.class);
 
-    private Map<String, String> root;
-    private Map<String, FilePreferences> children;
+    private final Map<String, String> root;
+    private final Map<String, FilePreferences> children;
     private boolean isRemoved = false;
 
-    private File m_file;
+    private final File m_file;
 
     public FilePreferences(File f, AbstractPreferences parent, String name)
     {
@@ -58,7 +58,7 @@ public class FilePreferences extends AbstractPreferences {
             sync();
         }
         catch (BackingStoreException e) {
-            LOGGER.error("Unable to sync on creation of node " + name, e);
+          LOGGER.error("Unable to sync on creation of node {}", name, e);
         }
     }
 
@@ -100,7 +100,7 @@ public class FilePreferences extends AbstractPreferences {
             cnt++;
         }
 
-        if (sb.length()>0) {
+        if (!sb.isEmpty()) {
             value = sb.toString();
         } else {
             value = def;
@@ -118,7 +118,7 @@ public class FilePreferences extends AbstractPreferences {
             flush();
         }
         catch (BackingStoreException e) {
-            LOGGER.error("Unable to flush after putting " + key, e);
+          LOGGER.error("Unable to flush after putting {}", key, e);
         }
     }
 
@@ -136,7 +136,7 @@ public class FilePreferences extends AbstractPreferences {
             flush();
         }
         catch (BackingStoreException e) {
-            LOGGER.error("Unable to flush after removing " + key, e);
+          LOGGER.error("Unable to flush after removing {}", key, e);
         }
     }
 

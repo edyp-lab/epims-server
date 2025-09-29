@@ -21,7 +21,7 @@ public class FileUtils {
             for (int i = 0; i < content.length; i++) {
                 File f = content[i];
                 File d = new File(dest, f.getName());
-                LOGGER.debug(" copy file "+f.getName());
+              LOGGER.debug(" copy file {}", f.getName());
                 secureCopy(f, d);
             }
 

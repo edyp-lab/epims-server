@@ -103,7 +103,7 @@ public class ArchiveService {
     }
 
 
-    public class AcquisitionToArchive {
+    public static class AcquisitionToArchive {
         public String nature;
         public int attachedFileId;
         public String fileName;

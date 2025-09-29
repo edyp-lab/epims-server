@@ -83,7 +83,7 @@ public class ServingWebContentApplication {
         MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
         converter.setTargetType(MessageType.TEXT);
         converter.setTypeIdPropertyName("_type");
-        Map<String, Class<?>> typeIdMappings = new HashMap();
+        Map<String, Class<?>> typeIdMappings = new HashMap<>();
         typeIdMappings.put(AcquisitionFileMessageJson.class.getName(), AcquisitionFileMessageJson.class);
         converter.setTypeIdMappings(typeIdMappings);
         return converter;

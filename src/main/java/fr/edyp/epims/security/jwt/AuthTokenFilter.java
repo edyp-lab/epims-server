@@ -60,9 +60,9 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        LOGGER.info("Request from user "+username+":"+request.getRequestURI());
+        LOGGER.info("Request from user {}:{}", username, request.getRequestURI());
       } else {
-        LOGGER.info("Request "+request.getRequestURI());
+        LOGGER.info("Request {}", request.getRequestURI());
       }
     } catch (Exception e) {
       LOGGER.error("Cannot set user authentication: {}", e);

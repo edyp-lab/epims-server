@@ -31,7 +31,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class JmsProducer {
 
-    private JmsTemplate jmsTemplate;
+    private final JmsTemplate jmsTemplate;
 
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JmsProducer.class);

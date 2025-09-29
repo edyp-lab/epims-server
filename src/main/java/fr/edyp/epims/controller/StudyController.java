@@ -212,7 +212,7 @@ public class StudyController {
         }
 
         if (!studyDirCreated) {
-            throw new EpimServerException(EpimsErrorCode.STUDY_DIRECTORY_CREATION_FAILED, "Study Key: " + study.getNomenclatureTitle());
+            throw new EpimServerException(EpimsErrorCode.STUDY_DIRECTORY_ACCESS_ERROR, "Study Key: " + study.getNomenclatureTitle());
         }
 
         DatabaseVersionManager.getSingleton().bumpVersion(StudyJson.class, null);

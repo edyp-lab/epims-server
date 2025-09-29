@@ -156,7 +156,7 @@ public class PathManager {
             File searchedFile = new File(fullPath.toString());
 
             if (searchedFile.exists()) {
-                LOGGER.debug(" Full Path found for "+suffixPath+ " : "+ fullPath.toString());
+              LOGGER.debug(" Full Path found for {} : {}", suffixPath, fullPath.toString());
                 return nextRepository;
             }
         }
@@ -192,7 +192,7 @@ public class PathManager {
     }
 
     public String getProjectPartialPath(Project p) {
-        LOGGER.debug(" ------- Enter getPartialPathForProject for " + p);
+      LOGGER.debug(" ------- Enter getPartialPathForProject for {}", p);
         StringBuffer projectPath = new StringBuffer();
         StringBuffer fullPath = new StringBuffer();
 
@@ -234,7 +234,7 @@ public class PathManager {
             fullPath.append(m_pathData.getPath(ResourceManager.UNDEFINED_DIR));
         }
 
-        LOGGER.debug(" Final project partial PATH " + projectPath);
+      LOGGER.debug(" Final project partial PATH {}", projectPath);
         File f = new File(fullPath.toString());
         if(! f.exists()){
             return null;
@@ -272,7 +272,7 @@ public class PathManager {
         if (acqContext == null || acqContext.getAcquisitionFileDescriptor().getAcquisition() == null) {
             throw new Exception("L'acquisition spécifiée est null");  // should not happen
         }
-        LOGGER.debug(" Search DestinationPath For "+acqContext.getAcquisitionFileDescriptor().getAcquisition().getName());
+      LOGGER.debug(" Search DestinationPath For {}", acqContext.getAcquisitionFileDescriptor().getAcquisition().getName());
 
         // JPM : these protocol acquisition and acquisition have been created in memory by the client, they could not exist in database
         ProtocolApplicationJson protocolApplicationJson = acqContext.getAcquisitionFileDescriptor().getAcquisition();
@@ -283,7 +283,7 @@ public class PathManager {
         if (protocolApplicationOpt.isPresent()) {
             ProtocolApplication protocolApplication = protocolApplicationOpt.get();
             wantedAcqPath = getExistingAcqPath(protocolApplication);
-            LOGGER.warn(" ----> 2. Found an existing Path for "+protocolApplicationJson.getName()+ " ? : "+wantedAcqPath);
+          LOGGER.warn(" ----> 2. Found an existing Path for {} ? : {}", protocolApplicationJson.getName(), wantedAcqPath);
 
         }  // else {//No acquisition exists in database with the given name.
 
@@ -298,7 +298,7 @@ public class PathManager {
                 if (acqContext.getSampleDescriptor() != null && acqContext.getSampleDescriptor().getName() !=null){
                     String rawTagName = PathTag.RAW;
 
-                    LOGGER.debug(" --- 4.a Will get Sample "+acqContext.getSampleDescriptor().getName().trim());
+                  LOGGER.debug(" --- 4.a Will get Sample {}", acqContext.getSampleDescriptor().getName().trim());
 
                     Optional<Sample> sampleOpt = m_sampleRepository.findByName(acqContext.getSampleDescriptor().getName().trim());
                     if (! sampleOpt.isPresent()) {
@@ -310,7 +310,7 @@ public class PathManager {
                     Sample sample = sampleOpt.get();
                     wantedAcqPath =  getFilesPath(sample, rawTagName);
 
-                    LOGGER.debug(" ----> 4a. Found a Path for  "+acqContext.getSampleDescriptor().getName()+" ? = "+wantedAcqPath);
+                  LOGGER.debug(" ----> 4a. Found a Path for  {} ? = {}", acqContext.getSampleDescriptor().getName(), wantedAcqPath);
 
                 }
             } else { //Not a research acquisition
@@ -326,7 +326,7 @@ public class PathManager {
                 }
 
                 wantedAcqPath = getSharedAcqPath(acquisitionJson.getNatureAsEnum(), protocolApplicationJson.getDate(), instrumentName);
-                LOGGER.debug(" ----> 5a. Found a Path for ctrl "+acqContext.getAcquisitionFileDescriptor().getAcquisition().getAcquisitionJson().getNature()+" = "+wantedAcqPath);
+              LOGGER.debug(" ----> 5a. Found a Path for ctrl {} = {}", acqContext.getAcquisitionFileDescriptor().getAcquisition().getAcquisitionJson().getNature(), wantedAcqPath);
             }
 
         } // END no acq exists in DB
@@ -1001,8 +1001,7 @@ public class PathManager {
             return null;
 
         String partialPath = getStudyPartialPath(s);
-        LOGGER.debug(" getStudyAbsolutePath partial for " + s.getNomenclatureTitle()
-                + " = " + partialPath);
+      LOGGER.debug(" getStudyAbsolutePath partial for {} = {}", s.getNomenclatureTitle(), partialPath);
 
         String containerRepository = getRepositoryFor(partialPath);
         if(containerRepository == null )

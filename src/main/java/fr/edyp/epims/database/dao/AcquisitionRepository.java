@@ -27,5 +27,5 @@ import java.util.List;
 public interface AcquisitionRepository extends JpaRepository<Acquisition, Integer> {
 
     @Query("SELECT DISTINCT a.nature FROM Acquisition a")
-    public List<String> findDistinctNatures();
+    List<String> findDistinctNatures();
 }

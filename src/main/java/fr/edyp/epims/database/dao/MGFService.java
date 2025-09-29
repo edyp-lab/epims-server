@@ -49,7 +49,6 @@ public class MGFService {
 
         List<Object[]> resultSQLList = em.createNativeQuery(sql).getResultList();
 
-
         MgfFileInfoJson[] resultList = new MgfFileInfoJson[resultSQLList.size()];
         int i = 0;
         for (Object[] values : resultSQLList) {
@@ -68,26 +67,27 @@ public class MGFService {
     public Integer studyForMGF(String mgfName) {
 
         String acquisitionName = acquisitionNameForMGFName(mgfName);
+        return studyIdForAcq(acquisitionName);
+    }
 
+    public Integer studyIdForAcq(String acquisitionName) {
+        if (acquisitionName == null || acquisitionName.isEmpty() ) {
+            return -1;
+        }
+        String sql ="select s.study from sample s, treatments_application ta, protocol_application pa " +
+                "where pa.\"name\" = :acqName and pa.id=ta.protocol_application and ta.treatments =s.treatments ";
 
-        String sql ="select s.study \n" +
-                "from sample s, treatments_application ta, protocol_application pa \n" +
-                "where pa.\"name\" = '"+acquisitionName+"' and pa.id=ta.protocol_application and ta.treatments =s.treatments ";
-
-        List<Object> resultSQLList = em.createNativeQuery(sql).getResultList();
-        if (resultSQLList.size()>0) {
-            Integer sampleId = (Integer) resultSQLList.get(0);
-            return sampleId;
+        List<Object> resultSQLList = em.createNativeQuery(sql).setParameter("acqName", acquisitionName).getResultList();
+        if (!resultSQLList.isEmpty()) {
+            return (Integer) resultSQLList.get(0);
         } else {
             return -1;
         }
-
     }
-
 
     public static String acquisitionNameForMGFName(String mgfName) {
 
-        // Look for name like "6536375___HF1_23942.raw.-1.mgf
+        // Look for name like "6536375___HF1_23942.raw.-1.mgf" : *___<NAME>.raw*
         int index3Underscore = mgfName.indexOf("___");
         if (index3Underscore != -1) {
             int indexRaw = mgfName.indexOf(".raw");
@@ -96,7 +96,7 @@ public class MGFService {
             }
         }
 
-        // Look for names with multiple underscores HF1_280043_452323.mgf
+        // Look for names with multiple underscores HF1_280043_452323.mgf : <NAMEwith_>_*
         int indexFirstUnderscore = mgfName.indexOf("_");
         if (indexFirstUnderscore != -1) {
             int indexLastUnderscore = mgfName.lastIndexOf("_");
@@ -105,20 +105,19 @@ public class MGFService {
             }
         }
 
-        // Look for names with " (2).mgf"
+        // Look for names with " (2).mgf": <NAME> (2).mgf
         int indexOf2 = mgfName.indexOf(" (2).mgf");
         if (indexOf2 != -1) {
             return mgfName.substring(0, indexOf2);
         }
 
-        // normal case HF2_352523.mgf
+        // normal case HF2_352523.mgf: <NAME>.mgf
         int indexMgf = mgfName.indexOf(".mgf");
         if (indexMgf != -1) {
             return mgfName.substring(0, indexMgf);
         }
 
         return mgfName; // should not happen
-
 
     }
 

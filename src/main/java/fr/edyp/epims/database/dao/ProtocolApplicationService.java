@@ -76,16 +76,16 @@ public class ProtocolApplicationService {
         }
 
         Date startDateD = null;
-        boolean startDateParameter = ((startDate!=null) && (startDate.length()>1));;
-        if (startDateParameter) {
+        boolean startDateParameter = ((startDate!=null) && (startDate.length()>1));
+      if (startDateParameter) {
             queryString += (firstWhere) ? " WHERE " : " AND "; firstWhere = false;
             queryString += " pa.date >= :startdate ";
             startDateD = convertToDate(startDate);
         }
 
         Date endDateD = null;
-        boolean endDateParameter = ((endDate!=null) && (endDate.length()>1));;
-        if (endDateParameter) {
+        boolean endDateParameter = ((endDate!=null) && (endDate.length()>1));
+      if (endDateParameter) {
             queryString += (firstWhere) ? " WHERE " : " AND "; firstWhere = false;
             queryString += " pa.date <= :enddate ";
             endDateD = convertToDate(endDate);
@@ -140,7 +140,7 @@ public class ProtocolApplicationService {
         }
 
     }
-    private static SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+    private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
 
 
     /**

@@ -29,5 +29,5 @@ public interface ActorRoleRepository extends JpaRepository<ActorRole, ActorRoleI
 
     @Modifying
     @Query(value = "ALTER TABLE actor_role DROP CONSTRAINT IF EXISTS actor_role_role", nativeQuery = true)
-    public void dropRoleConstraint();
+    void dropRoleConstraint();
 }

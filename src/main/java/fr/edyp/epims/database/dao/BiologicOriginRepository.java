@@ -18,7 +18,6 @@
 package fr.edyp.epims.database.dao;
 
 import fr.edyp.epims.database.entities.BiologicOrigin;
-import fr.edyp.epims.database.entities.SampleSpecies;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -32,8 +31,8 @@ public interface BiologicOriginRepository extends JpaRepository<BiologicOrigin, 
             " ((:sampleSubcellularLocalisationId is null) OR sampleSubcellularLocalisation.id = :sampleSubcellularLocalisationId) AND " +
             " ((:sampleTypeId is null) OR sampleType.id = :sampleTypeId) AND " +
             " (commentOrigin is null)")
-    public List<BiologicOrigin> findByValues(@Param("sampleKindId") Integer sampleKindId,
-                                             @Param("sampleSpeciesId") Integer sampleSpeciesId,
-                                             @Param("sampleSubcellularLocalisationId") Integer sampleSubcellularLocalisationId,
-                                             @Param("sampleTypeId") Integer sampleTypeId);
+    List<BiologicOrigin> findByValues(@Param("sampleKindId") Integer sampleKindId,
+                                      @Param("sampleSpeciesId") Integer sampleSpeciesId,
+                                      @Param("sampleSubcellularLocalisationId") Integer sampleSubcellularLocalisationId,
+                                      @Param("sampleTypeId") Integer sampleTypeId);
 }

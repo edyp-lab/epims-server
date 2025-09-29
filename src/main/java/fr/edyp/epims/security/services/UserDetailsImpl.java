@@ -33,14 +33,14 @@ public class UserDetailsImpl implements UserDetails {
 	private static final long serialVersionUID = 1L;
 
 
-	private String username;
+	private final String username;
 
-	private String email;
+	private final String email;
 
 	@JsonIgnore
-	private String password;
+	private final String password;
 
-	private Collection<? extends GrantedAuthority> authorities;
+	private final Collection<? extends GrantedAuthority> authorities;
 
 	public UserDetailsImpl(String username, String email, String password,
 			Collection<? extends GrantedAuthority> authorities) {

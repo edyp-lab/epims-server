@@ -358,7 +358,7 @@ public class ProtocolApplicationController {
             LOGGER.info("Finished Dispatch Acquisition File created to JMS");
 
         } catch (Exception serviceExc) {
-            LOGGER.error("Problem while saving the acquisition " +acquisitionFileMessageJson.getAcquisitionFileDescriptor().getAcquisition().getName(), serviceExc);
+          LOGGER.error("Problem while saving the acquisition {}", acquisitionFileMessageJson.getAcquisitionFileDescriptor().getAcquisition().getName(), serviceExc);
             return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
@@ -561,13 +561,13 @@ public class ProtocolApplicationController {
         if (LOGGER.isDebugEnabled()) {
 
 
-            LOGGER.debug("Send Msg acquisition file available for acq " + name);
+          LOGGER.debug("Send Msg acquisition file available for acq {}", name);
         }
-        LOGGER.info("Send Msg acquisition file available for acq " + name);
+      LOGGER.info("Send Msg acquisition file available for acq {}", name);
 
 
         AcquisitionFileMessageJson acquisitionFileMessageJson = createMessageInformation(acquisitionFile);
-        LOGGER.info("Message Ready to Send " + name);
+      LOGGER.info("Message Ready to Send {}", name);
         jmsProducer.sendAcquisitionFileAvailable(acquisitionFileMessageJson);
 
 
@@ -650,7 +650,7 @@ public class ProtocolApplicationController {
 
                     Sample sample = samples.get(0);
                     if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("   - Add Sample info " + sample.getName());
+                      LOGGER.debug("   - Add Sample info {}", sample.getName());
                     }
                     SampleJson splDesc = new SampleJson();
                     splDesc.setName(sample.getName());
@@ -682,7 +682,7 @@ public class ProtocolApplicationController {
 
                 }
             } catch (Exception epse) {
-                LOGGER.warn("Research Acquisition Sample Error "+acq.getName());
+              LOGGER.warn("Research Acquisition Sample Error {}", acq.getName());
             }
 
         }

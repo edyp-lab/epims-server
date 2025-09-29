@@ -19,8 +19,11 @@ package fr.edyp.epims.controller;
 
 import fr.edyp.epims.database.dao.*;
 import fr.edyp.epims.database.entities.*;
+import fr.edyp.epims.json.MgfKeysInfoJson;
 import fr.edyp.epims.json.MgfFileInfoJson;
 import fr.edyp.epims.path.PathManager;
+import fr.edyp.epims.util.error.EpimServerException;
+import fr.edyp.epims.util.error.EpimsErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +41,7 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
+// Use Global Exception Handler. See GlobalExceptionHandler
 @RestController
 @RequestMapping("/api")
 public class MGFController {
@@ -46,7 +50,6 @@ public class MGFController {
 
     @Autowired
     MGFService mgfService;
-
 
     @Autowired
     AttachedFileRepository attachedFileRepository;
@@ -72,114 +75,105 @@ public class MGFController {
     @PostMapping("/mgflist")
     public ResponseEntity<MgfFileInfoJson[]> mgflist() {
 
-        try {
-            MgfFileInfoJson[] mgfList = mgfService.mgfList();
-
-            return new ResponseEntity(mgfList, HttpStatus.OK);
-
-        } catch (Exception e) {
-            LOGGER.error("error in /api/mgflist", e);
-            return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        MgfFileInfoJson[] mgfList = mgfService.mgfList();
+        return new ResponseEntity<>(mgfList, HttpStatus.OK);
     }
 
     @PostMapping("/studyformgf")
-    public ResponseEntity<Integer> studyForMgf(@RequestBody String mgfname) {
+    public ResponseEntity<Integer> studyForMgf(@RequestBody String mgfName) {
 
-        try {
-            Integer studyId = mgfService.studyForMGF(mgfname);
+        Integer studyId = mgfService.studyForMGF(mgfName);
+        return new ResponseEntity<>(studyId, HttpStatus.OK);
+    }
 
-            return new ResponseEntity(studyId, HttpStatus.OK);
+    @PostMapping("/mgfkeyinfo")
+    public ResponseEntity<MgfKeysInfoJson> infoForMgf(@RequestBody MgfKeysInfoJson mgfKeysInfoJson) {
 
-        } catch (Exception e) {
-            LOGGER.error("error in /api/studyForMgf", e);
-            return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
+        String acquisitionName = mgfKeysInfoJson.getAcquisitionName();
+        if(acquisitionName == null || acquisitionName.isEmpty()) {
+            acquisitionName = MGFService.acquisitionNameForMGFName(mgfKeysInfoJson.getName());
         }
 
+        Integer studyId = mgfService.studyIdForAcq(acquisitionName);
+        LOGGER.debug("Search information for acquisition {} : found {}", acquisitionName, studyId);
+
+        mgfKeysInfoJson.setAcquisitionName(acquisitionName);
+        mgfKeysInfoJson.setStudyId(studyId);
+
+        return new ResponseEntity<>(mgfKeysInfoJson, HttpStatus.OK);
     }
+
 
     @Transactional
     @PostMapping("/createmgf")
     public ResponseEntity<Integer> createMgf(@RequestBody MgfFileInfoJson mgfFileInfoJson) {
 
-        try {
-
-            Optional<Study> studyOptional = studyRepository.findById(mgfFileInfoJson.getStudyId());
-            if (!studyOptional.isPresent()) {
-                String message ="error in /createmgf  : study not found:"+mgfFileInfoJson.getStudyId();
-                LOGGER.error(message);
-                return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-            Study study = studyOptional.get();
-            String partialPath = pathManager.getStudyPartialPath(study);
-            if (partialPath == null) {
-                String message ="error in /createmgf  : partial path not found for study :"+mgfFileInfoJson.getStudyId();
-                LOGGER.error(message);
-                return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-
-            String path = mgfFileInfoJson.getDirectoryPath();
-            int index = path.indexOf(partialPath);
-            if (index != -1) {
-                path = path.substring(index);
-            }
-
-            // Create AttachedFile without fileLinks and fileTags
-            AttachedFile attachedFileToCreate = new AttachedFile();
-            attachedFileToCreate.setDate(mgfFileInfoJson.getDate());
-            attachedFileToCreate.setName(mgfFileInfoJson.getName());
-            attachedFileToCreate.setPath(path);
-            attachedFileToCreate.setSizeMo(mgfFileInfoJson.getSizeMo());
-            attachedFileToCreate.setArchived(null);
-            Set<FileLink> fileLinkSet = new HashSet<FileLink>();
-            attachedFileToCreate.setFileLinks(fileLinkSet);
-            Set<FileTags> fileTagsSet = new HashSet<FileTags>();
-            attachedFileToCreate.setFileTagses(fileTagsSet);
-            AttachedFile attachedFileCreated = attachedFileRepository.save(attachedFileToCreate);
-
-            String acquisitionName = mgfService.acquisitionNameForMGFName(mgfFileInfoJson.getName());
-            Optional<ProtocolApplication> protocolApplicationOptional = protocolApplicationRepository.findByName(acquisitionName);
-            int protocolaApplicationId;
-            if (protocolApplicationOptional.isPresent()) {
-                protocolaApplicationId = protocolApplicationOptional.get().getId();
-            } else {
-                LOGGER.error("error in /api/createMgf : acquisition not found for "+mgfFileInfoJson.getName() );
-                return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-
-            // Create AcquisitionFile
-            AcquisitionFile acqFileToCreate = new AcquisitionFile();
-            acqFileToCreate.setAttachedFile(attachedFileCreated);
-            acqFileToCreate.setIdFk(protocolaApplicationId);
-            AcquisitionFile acqFileCreated = acquisitionFileRepository.save(acqFileToCreate);
-
-            // Create FileTag
-
-            // Suppose acquisition file are RAW files
-            Tag rawTag = tagRepository.findByName("SPECTRA").get();
-            FileTagsId fileTagsId = new FileTagsId(attachedFileToCreate.getId(), rawTag.getName());
-            FileTags fileTag = new FileTags(fileTagsId, attachedFileToCreate, rawTag, 0);
-            FileTags fileTagCreated = fileTagsRepository.save(fileTag);
-
-            fileLinkSet.add(acqFileCreated);
-            fileTagsSet.add(fileTagCreated);
-            attachedFileCreated = attachedFileRepository.save(attachedFileToCreate);
-
-
-            fileTagsSet.add(fileTag);
-
-
-            acqFileCreated.setAttachedFile(attachedFileCreated);
-            acqFileCreated = acquisitionFileRepository.save(acqFileToCreate);
-
-
-
-            return new ResponseEntity(acqFileCreated.getId(), HttpStatus.OK);
-
-        } catch (Exception e) {
-            LOGGER.error("error in /api/createmgf", e);
-            return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
+        Integer sId = mgfFileInfoJson.getStudyId();
+        Optional<Study> studyOptional = studyRepository.findById(sId);
+        if (studyOptional.isEmpty()) {
+          LOGGER.error("error in /createmgf  : study not found:{}", sId);
+            throw new EpimServerException(EpimsErrorCode.STUDY_NOT_FOUND, "Create mgf, study not found: " + sId);
         }
 
+        Study study = studyOptional.get();
+        String partialPath = pathManager.getStudyPartialPath(study);
+        if (partialPath == null) {
+            LOGGER.error("error in /createmgf  : partial path not found for study :{}", mgfFileInfoJson.getStudyId());
+            throw new EpimServerException(EpimsErrorCode.STUDY_DIRECTORY_ACCESS_ERROR, "Create mgf, study path not found: " + sId);
+        }
+
+        String path = mgfFileInfoJson.getDirectoryPath();
+        int index = path.indexOf(partialPath);
+        if (index != -1) {
+            path = path.substring(index);
+        }
+
+        String acquisitionName = MGFService.acquisitionNameForMGFName(mgfFileInfoJson.getName());
+        Optional<ProtocolApplication> protocolApplicationOptional = protocolApplicationRepository.findByName(acquisitionName);
+        if (protocolApplicationOptional.isEmpty()) {
+          LOGGER.error("error in /api/createMgf : acquisition not found for {}", mgfFileInfoJson.getName());
+            throw new EpimServerException(EpimsErrorCode.ACQUISITION_NOT_FOUND, "Create mgf, acquisition not found: " + acquisitionName);
+        }
+
+        int   protocolaApplicationId = protocolApplicationOptional.get().getId();
+
+        // Create AttachedFile without fileLinks and fileTags
+        AttachedFile attachedFileToCreate = new AttachedFile();
+        attachedFileToCreate.setDate(mgfFileInfoJson.getDate());
+        attachedFileToCreate.setName(mgfFileInfoJson.getName());
+        attachedFileToCreate.setPath(path);
+        attachedFileToCreate.setSizeMo(mgfFileInfoJson.getSizeMo());
+        attachedFileToCreate.setArchived(null);
+        Set<FileLink> fileLinkSet = new HashSet<>();
+        attachedFileToCreate.setFileLinks(fileLinkSet);
+        Set<FileTags> fileTagsSet = new HashSet<>();
+        attachedFileToCreate.setFileTagses(fileTagsSet);
+        AttachedFile attachedFileCreated = attachedFileRepository.save(attachedFileToCreate);
+
+        // Create AcquisitionFile
+        AcquisitionFile acqFileToCreate = new AcquisitionFile();
+        acqFileToCreate.setAttachedFile(attachedFileCreated);
+        acqFileToCreate.setIdFk(protocolaApplicationId);
+        AcquisitionFile acqFileCreated = acquisitionFileRepository.save(acqFileToCreate);
+
+        // Create FileTag
+
+        // Suppose acquisition file are RAW files
+        Tag rawTag = tagRepository.findByName("SPECTRA").get(); //SHOULD exist
+        FileTagsId fileTagsId = new FileTagsId(attachedFileToCreate.getId(), rawTag.getName());
+        FileTags fileTag = new FileTags(fileTagsId, attachedFileToCreate, rawTag, 0);
+        FileTags fileTagCreated = fileTagsRepository.save(fileTag);
+
+        fileLinkSet.add(acqFileCreated);
+        fileTagsSet.add(fileTagCreated);
+        attachedFileCreated = attachedFileRepository.save(attachedFileToCreate);
+
+        fileTagsSet.add(fileTag);
+        acqFileCreated.setAttachedFile(attachedFileCreated);
+        acqFileCreated = acquisitionFileRepository.save(acqFileToCreate);
+
+
+
+        return new ResponseEntity<>(acqFileCreated.getId(), HttpStatus.OK);
     }
 }

@@ -27,5 +27,5 @@ import java.util.List;
 public interface RobotPlanningRepository extends JpaRepository<RobotPlanning, Integer> {
 
     @Query("SELECT DISTINCT r FROM RobotPlanning r WHERE r.sample.name = :name")
-    public List<RobotPlanning> findBySampleName(String name);
+    List<RobotPlanning> findBySampleName(String name);
 }

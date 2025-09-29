@@ -28,9 +28,9 @@ public interface AnalysisPriceListRepository extends JpaRepository<AnalysisPrice
 
 
     @Query("SELECT pl FROM AnalysisPriceList pl ORDER BY date DESC")
-    public List<AnalysisPriceList> findAllDateDesc(Pageable pageable);
+    List<AnalysisPriceList> findAllDateDesc(Pageable pageable);
 
     @Query("SELECT pl FROM AnalysisPriceList pl ORDER BY date DESC")
-    public List<AnalysisPriceList> findAllDateDesc();
+    List<AnalysisPriceList> findAllDateDesc();
 
 }
