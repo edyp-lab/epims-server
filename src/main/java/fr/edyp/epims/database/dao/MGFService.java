@@ -14,13 +14,10 @@
  * You should have received a copy of the CeCILL License
  * along with this program; If not, see <http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.html>.
  */
-
 package fr.edyp.epims.database.dao;
 
 
-
 import fr.edyp.epims.json.MgfFileInfoJson;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,8 +31,8 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class MGFService {
 
-    @Autowired
-    SampleRepository sampleRepository;
+//    @Autowired
+//    SampleRepository sampleRepository;
 
     @PersistenceContext
     private EntityManager em;
@@ -55,18 +52,17 @@ public class MGFService {
 
             String path = (String) values[0];
             String name = (String) values[1];
-            MgfFileInfoJson mgfFileInfoJson = new MgfFileInfoJson(name, path, -1, null, null);
+            MgfFileInfoJson mgfFileInfoJson = new MgfFileInfoJson(name, null,  path, -1, null, null);
             resultList[i] = mgfFileInfoJson;
             i++;
         }
-
 
         return resultList;
     }
 
     public Integer studyForMGF(String mgfName) {
 
-        String acquisitionName = acquisitionNameForMGFName(mgfName);
+        String acquisitionName = searchAcquisitionNameForMGFName(mgfName);
         return studyIdForAcq(acquisitionName);
     }
 
@@ -85,7 +81,7 @@ public class MGFService {
         }
     }
 
-    public static String acquisitionNameForMGFName(String mgfName) {
+    public static String searchAcquisitionNameForMGFName(String mgfName) {
 
         // Look for name like "6536375___HF1_23942.raw.-1.mgf" : *___<NAME>.raw*
         int index3Underscore = mgfName.indexOf("___");
@@ -118,8 +114,6 @@ public class MGFService {
         }
 
         return mgfName; // should not happen
-
     }
-
 
 }

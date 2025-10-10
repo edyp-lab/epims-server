@@ -24,6 +24,7 @@ import fr.edyp.epims.json.MgfFileInfoJson;
 import fr.edyp.epims.path.PathManager;
 import fr.edyp.epims.util.error.EpimServerException;
 import fr.edyp.epims.util.error.EpimsErrorCode;
+import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,17 +91,39 @@ public class MGFController {
     public ResponseEntity<MgfKeysInfoJson> infoForMgf(@RequestBody MgfKeysInfoJson mgfKeysInfoJson) {
 
         String acquisitionName = mgfKeysInfoJson.getAcquisitionName();
+        String mgfFileName = mgfKeysInfoJson.getFileName();
+        boolean acqNameSpecified = true;
         if(acquisitionName == null || acquisitionName.isEmpty()) {
-            acquisitionName = MGFService.acquisitionNameForMGFName(mgfKeysInfoJson.getName());
+            acqNameSpecified =  false;
+            acquisitionName = MGFService.searchAcquisitionNameForMGFName(mgfFileName);
         }
 
-        Integer studyId = mgfService.studyIdForAcq(acquisitionName);
-        LOGGER.debug("Search information for acquisition {} : found {}", acquisitionName, studyId);
+        Integer studyId;
+        String searchAcqName = FilenameUtils.getBaseName(mgfFileName);
+        if(!acqNameSpecified) {
+            //Try first using the global file name
+            studyId = searchStudyIdForAcqName(searchAcqName);
+            if ((studyId == null || studyId.equals(-1)) && !acquisitionName.equals(searchAcqName) ) {
+                //Search using the inferred acquisition name
+                searchAcqName = acquisitionName;
+                studyId = searchStudyIdForAcqName(searchAcqName);
+            }
 
-        mgfKeysInfoJson.setAcquisitionName(acquisitionName);
+        } else {
+            //acquisition Name specified by caller
+            searchAcqName = acquisitionName;
+            studyId = searchStudyIdForAcqName(searchAcqName);
+        }
+
+        mgfKeysInfoJson.setAcquisitionName(searchAcqName);
         mgfKeysInfoJson.setStudyId(studyId);
-
         return new ResponseEntity<>(mgfKeysInfoJson, HttpStatus.OK);
+    }
+
+    private Integer searchStudyIdForAcqName(String acqName) {
+        Integer studyId = mgfService.studyIdForAcq(acqName);
+        LOGGER.debug("Search information for acquisition {} : found {}", acqName, studyId);
+        return studyId;
     }
 
 
@@ -128,19 +151,14 @@ public class MGFController {
             path = path.substring(index);
         }
 
-        String acquisitionName = MGFService.acquisitionNameForMGFName(mgfFileInfoJson.getName());
-        Optional<ProtocolApplication> protocolApplicationOptional = protocolApplicationRepository.findByName(acquisitionName);
-        if (protocolApplicationOptional.isEmpty()) {
-          LOGGER.error("error in /api/createMgf : acquisition not found for {}", mgfFileInfoJson.getName());
-            throw new EpimServerException(EpimsErrorCode.ACQUISITION_NOT_FOUND, "Create mgf, acquisition not found: " + acquisitionName);
-        }
+        Optional<ProtocolApplication> protocolApplicationOptional = getProtocolApplication(mgfFileInfoJson);
 
         int   protocolaApplicationId = protocolApplicationOptional.get().getId();
 
         // Create AttachedFile without fileLinks and fileTags
         AttachedFile attachedFileToCreate = new AttachedFile();
         attachedFileToCreate.setDate(mgfFileInfoJson.getDate());
-        attachedFileToCreate.setName(mgfFileInfoJson.getName());
+        attachedFileToCreate.setName(mgfFileInfoJson.getFileName());
         attachedFileToCreate.setPath(path);
         attachedFileToCreate.setSizeMo(mgfFileInfoJson.getSizeMo());
         attachedFileToCreate.setArchived(null);
@@ -175,5 +193,33 @@ public class MGFController {
 
 
         return new ResponseEntity<>(acqFileCreated.getId(), HttpStatus.OK);
+    }
+
+    private Optional<ProtocolApplication> getProtocolApplication(MgfFileInfoJson mgfFileInfoJson) {
+        boolean acqNameSpecified = true;
+        String acquisitionName = mgfFileInfoJson.getAcqName();
+        if(acquisitionName == null || acquisitionName.isEmpty()){
+            acqNameSpecified =  false;
+            acquisitionName = MGFService.searchAcquisitionNameForMGFName(mgfFileInfoJson.getFileName());
+        }
+
+        Optional<ProtocolApplication> protocolApplicationOptional;
+        String searchAcqName;
+        if(!acqNameSpecified) {
+            searchAcqName = FilenameUtils.getBaseName(mgfFileInfoJson.getFileName());
+            protocolApplicationOptional = protocolApplicationRepository.findByName(searchAcqName);
+            if (protocolApplicationOptional.isEmpty()) {
+                searchAcqName = acquisitionName ;
+                protocolApplicationOptional = protocolApplicationRepository.findByName(searchAcqName);
+            }
+        } else {
+            searchAcqName = acquisitionName;
+            protocolApplicationOptional = protocolApplicationRepository.findByName(searchAcqName);
+        }
+        if (protocolApplicationOptional.isEmpty()) {
+            LOGGER.error("error in /api/createMgf : acquisition not found for {}", mgfFileInfoJson.getFileName());
+            throw new EpimServerException(EpimsErrorCode.ACQUISITION_NOT_FOUND, "Create mgf, acquisition not found: " + searchAcqName);
+        }
+        return protocolApplicationOptional;
     }
 }
