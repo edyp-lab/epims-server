@@ -19,6 +19,7 @@ package fr.edyp.epims.preferences;
 
 public class PreferencesKeys {
     public final static String FTP_HOST = "FTP_HOST";
+    public final static String FTP_PORT = "FTP_PORT";
     public final static String FTP_LOG = "FTP_LOG";
     public final static String FTP_PASSWORD = "FTP_PASSWORD";
     public final static String FTP_HOME = "FTP_HOME";

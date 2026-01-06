@@ -51,6 +51,7 @@ public class FTPSettingController {
                 // Parameters are not in the preference file
                 LOGGER.error(" NO FTP parameters in Preference file !! SET general value... Should be changed");
                 preferences.put(PreferencesKeys.FTP_HOST, "epims-host");
+                preferences.putInt(PreferencesKeys.FTP_PORT, 22);
                 preferences.put(PreferencesKeys.FTP_LOG, "epims");
                 preferences.put(PreferencesKeys.FTP_PASSWORD, "epims-pwd");
                 preferences.put(PreferencesKeys.FTP_HOME, env.getProperty("epims.ftp.home"));
@@ -59,12 +60,13 @@ public class FTPSettingController {
             }
 
             String ftpHost = preferences.get(PreferencesKeys.FTP_HOST, "epims-host");
+            Integer ftpport = preferences.getInt(PreferencesKeys.FTP_PORT, 22);
             String ftpLog = preferences.get(PreferencesKeys.FTP_LOG, "epims");
             String ftpPassword = preferences.get(PreferencesKeys.FTP_PASSWORD, "epims-pwd");
             String ftpHome = preferences.get(PreferencesKeys.FTP_HOME, env.getProperty("epims.ftp.home"));
 
 
-            FtpConfigurationJson configuration = new FtpConfigurationJson(ftpHost, ftpLog, ftpPassword, ftpHome, null);
+            FtpConfigurationJson configuration = new FtpConfigurationJson(ftpHost, ftpport, ftpLog, ftpPassword, ftpHome, null);
 
             return new ResponseEntity<>(configuration, HttpStatus.OK);
         } catch (Exception e) {
