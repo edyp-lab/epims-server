@@ -24,6 +24,8 @@ import fr.edyp.epims.database.entities.*;
 import fr.edyp.epims.json.AcquisitionFileMessageJson;
 import fr.edyp.epims.json.AcquisitionJson;
 import fr.edyp.epims.json.ProtocolApplicationJson;
+import fr.edyp.epims.preferences.PreferencesKeys;
+import fr.edyp.epims.preferences.ServerEpimsPreferences;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +38,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Optional;
 import java.util.Set;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.Preferences;
 
 @Service
 @Configurable
@@ -61,6 +65,17 @@ public class PathManager {
 
     @Autowired
     private PathData m_pathData;
+
+    public static String getSystemRelativePath() throws BackingStoreException {
+        Preferences preferences = ServerEpimsPreferences.root();
+        if (preferences.get(PreferencesKeys.PIMS_SYSTEM_RELATIVE_PATH, null) == null) {
+            // Parameters are not in the preference file
+            preferences.put(PreferencesKeys.PIMS_SYSTEM_RELATIVE_PATH, "system");
+            preferences.flush();
+        }
+
+        return preferences.get(PreferencesKeys.PIMS_SYSTEM_RELATIVE_PATH, "system");
+    }
 
 
     public String getStudyPath(Study s) {
@@ -126,11 +141,10 @@ public class PathManager {
         int repositoryIndex = 1;
 
         //More repository may exist
-        boolean moreRepository = true;
-        //At least one repository defined
+      //At least one repository defined
         boolean repositoryDefined = false;
 
-        while (moreRepository) {
+        while (true) {
             StringBuffer fullPath = new StringBuffer(pimsRoot);
             fullPath.append("/");
 
@@ -142,8 +156,7 @@ public class PathManager {
             // - get next repository property
             String nextRepository = m_pathData.getPath(rscPimsRoot.toString());
             if (nextRepository == null) {
-                moreRepository = false;
-                break;
+              break;
             }
 
             fullPath.append(nextRepository);

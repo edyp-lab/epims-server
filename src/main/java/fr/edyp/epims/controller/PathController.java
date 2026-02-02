@@ -43,16 +43,7 @@ public class PathController {
     public ResponseEntity<String> pimsSystemRelativePath() {
         try {
 
-            //
-            Preferences preferences = ServerEpimsPreferences.root();
-            if (preferences.get(PreferencesKeys.PIMS_SYSTEM_RELATIVE_PATH, null) == null) {
-                // Parameters are not in the preference file
-                preferences.put(PreferencesKeys.PIMS_SYSTEM_RELATIVE_PATH, "system");
-                preferences.flush();
-            }
-
-            String path = preferences.get(PreferencesKeys.PIMS_SYSTEM_RELATIVE_PATH, "system");
-
+            String path = PathManager.getSystemRelativePath();
             return new ResponseEntity<>(path, HttpStatus.OK);
         } catch (Exception e) {
             LOGGER.error("error in /api/pimsSystemRelativePath", e);

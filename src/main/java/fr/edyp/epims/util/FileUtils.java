@@ -1,6 +1,8 @@
 package fr.edyp.epims.util;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.CheckedOutputStream;
 import java.util.zip.Adler32;
@@ -18,10 +20,10 @@ public class FileUtils {
         if (src.isDirectory()) {
             dest.mkdir();
             File[] content = src.listFiles();
-            for (int i = 0; i < content.length; i++) {
+            for (int i = 0; i < Objects.requireNonNull(content).length; i++) {
                 File f = content[i];
                 File d = new File(dest, f.getName());
-              LOGGER.debug(" copy file {}", f.getName());
+                LOGGER.debug(" copy file {}", f.getName());
                 secureCopy(f, d);
             }
 
@@ -48,4 +50,21 @@ public class FileUtils {
             }
         }
     }
+
+    public static void append(File file, String data) throws IOException {
+
+        LOGGER.debug("Appending data to file: {}", file.getName());
+
+        try (FileOutputStream out = new FileOutputStream(file, true);
+            OutputStreamWriter writer = new OutputStreamWriter(out, StandardCharsets.UTF_8)) {
+            writer.write("\n");
+            writer.write(data);
+            writer.flush();
+
+        } catch (IOException e) {
+            LOGGER.error("Error appending data to file: {}", file.getName(), e);
+            throw e;
+        }
+    }
+
 }
