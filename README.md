@@ -48,8 +48,12 @@ jwt.secret=[A UNIQUE KEY]
 
 ## Releases
  
-### Version 3.1.x
+### Version 3.2.x
 
+* Modify Build to add script and config file access
+* Add controller for instrument Log file append
+* Improve MGF controller to allow user to specify acquisition name
+* Allow FTP port definition 
 * Migrate to GitHub
 * Upgrade Java to version 17, springboot to 3.5.5 and all dependencies
 
