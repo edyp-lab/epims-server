@@ -40,6 +40,16 @@ public class Instrument implements java.io.Serializable {
 		this.robot = robot;
 	}
 
+	public Instrument( String name, String manufacturer, String model, String status,
+										Spectrometer spectrometer, Robot robot) {
+		this.name = name;
+		this.manufacturer = manufacturer;
+		this.model = model;
+		this.status = status;
+		this.spectrometer = spectrometer;
+		this.robot = robot;
+	}
+
 	@Id
 	@GeneratedValue(strategy= GenerationType.SEQUENCE, generator = "instrument_generator")
 	@SequenceGenerator(name = "instrument_generator", sequenceName = "instrument_id_seq", allocationSize = 1)

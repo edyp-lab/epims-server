@@ -102,7 +102,7 @@ public class InstrumentController {
                 return new ResponseEntity(HttpStatus.CONFLICT);
             }
 
-            Instrument instrument = new Instrument(-1, instrumentJson.getName(), instrumentJson.getManufacturer(), instrumentJson.getModel(),
+            Instrument instrument = new Instrument( instrumentJson.getName(), instrumentJson.getManufacturer(), instrumentJson.getModel(),
                     instrumentJson.getStatus(), null, null);
             instrument = instrumentRepository.save(instrument);
 
