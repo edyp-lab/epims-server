@@ -178,7 +178,10 @@ public class ProtocolApplicationController {
                                         acquisition.getSpectrometer().getInstrument().getId(),
                                         acquisition.getNature(),
                                         acquisition.getDurationMin(),
-                                        acquisition.getSpectrometer().getInstrument().getName());
+                                        acquisition.getSpectrometer().getInstrument().getName(),
+                                        acquisition.getMethodName(),
+                                        acquisition.getInjectionVolume(),
+                                        acquisition.getVialInformation());
 
                                 String sampleActorKey = (s.getActor() != null) ? s.getActor().getLogin() : null;
                                 String actorKey = (protocolApplication.getActor() != null) ? protocolApplication.getActor().getLogin() : null;
@@ -417,6 +420,9 @@ public class ProtocolApplicationController {
 
         acquisitionToCreate.setDurationMin(acquisitionJson.getDurationMin());
         acquisitionToCreate.setNature(acquisitionJson.getNature());
+        acquisitionToCreate.setMethodName(acquisitionJson.getMethodName());
+        acquisitionToCreate.setInjectionVolume(acquisitionJson.getInjectionVolume());
+        acquisitionToCreate.setVialInformation(acquisitionJson.getVialInformation());
         acquisitionToCreate.setSpectrometer(spectrometerOpt.get());
 
         acquisitionToCreate.setProtocolApplication(protocolApplicationToCreate);
@@ -608,6 +614,9 @@ public class ProtocolApplicationController {
         acqDesc.setComment(acq.getComment());
         acqDesc.setDate(acq.getDate());
         acqDesc.getAcquisitionJson().setDurationMin(acq.getAcquisition().getDurationMin());
+        acqDesc.getAcquisitionJson().setMethodName(acq.getAcquisition().getMethodName());
+        acqDesc.getAcquisitionJson().setInjectionVolume(acq.getAcquisition().getInjectionVolume());
+        acqDesc.getAcquisitionJson().setVialInformation(acq.getAcquisition().getVialInformation());
 
 
 

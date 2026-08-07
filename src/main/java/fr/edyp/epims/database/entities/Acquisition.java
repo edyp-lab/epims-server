@@ -27,6 +27,9 @@ public class Acquisition implements java.io.Serializable {
 	private Spectrometer spectrometer;
 	private String nature;
 	private Float durationMin;
+	private String methodName;
+	private Float injectionVolume;
+	private String vialInformation;
 
 	public Acquisition() {
 	}
@@ -43,6 +46,17 @@ public class Acquisition implements java.io.Serializable {
 		this.spectrometer = spectrometer;
 		this.nature = nature;
 		this.durationMin = durationMin;
+	}
+
+	public Acquisition(ProtocolApplication protocolApplication, Spectrometer spectrometer, String nature,
+					   Float durationMin, String methodName, Float injectionVolume, String vialInformation) {
+		this.protocolApplication = protocolApplication;
+		this.spectrometer = spectrometer;
+		this.nature = nature;
+		this.durationMin = durationMin;
+		this.methodName = methodName;
+		this.injectionVolume = injectionVolume;
+		this.vialInformation = vialInformation;
 	}
 
 
@@ -95,6 +109,33 @@ public class Acquisition implements java.io.Serializable {
 
 	public void setDurationMin(Float durationMin) {
 		this.durationMin = durationMin;
+	}
+
+	@Column(name = "method_name")
+	public String getMethodName() {
+		return methodName;
+	}
+
+	public void setMethodName(String methodName) {
+		this.methodName = methodName;
+	}
+
+	@Column(name = "injection_volume")
+	public Float getInjectionVolume() {
+		return injectionVolume;
+	}
+
+	public void setInjectionVolume(Float injectionVolume) {
+		this.injectionVolume = injectionVolume;
+	}
+
+	@Column(name = "vial_information")
+	public String getVialInformation() {
+		return vialInformation;
+	}
+
+	public void setVialInformation(String vialInformation) {
+		this.vialInformation = vialInformation;
 	}
 
 }
