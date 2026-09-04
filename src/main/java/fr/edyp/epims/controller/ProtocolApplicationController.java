@@ -182,6 +182,7 @@ public class ProtocolApplicationController {
                                         acquisition.getMethodName(),
                                         acquisition.getInjectionVolume(),
                                         acquisition.getVialInformation());
+                                acquisitionJson.setCategory(acquisition.getCategory());
 
                                 String sampleActorKey = (s.getActor() != null) ? s.getActor().getLogin() : null;
                                 String actorKey = (protocolApplication.getActor() != null) ? protocolApplication.getActor().getLogin() : null;
@@ -336,7 +337,9 @@ public class ProtocolApplicationController {
 
             // get Sample and modify its status
             Sample sample = null;
-            if (AcquisitionJson.convertNatureToEnum(protocoalApplicationToCreate.getAcquisition().getNature()).equals(AcquisitionJson.Nature.RESEARCH)) {
+            AcquisitionJson.Nature nature = AcquisitionJson.convertNatureToEnum(protocoalApplicationToCreate.getAcquisition().getNature());
+
+            if (nature.equals(AcquisitionJson.Nature.RESEARCH)) {
 
                 Optional<Sample> sampleOpt = sampleRepository.findByName(acquisitionFileMessageJson.getSampleDescriptor().getName());
                 if (sampleOpt.isPresent()) {
@@ -344,9 +347,28 @@ public class ProtocolApplicationController {
                 }
 
                 //Set sample status && delete planned analysis
-                sample.setStatus(Sample.AVAILABLE_STATUS_VALUE);
-                //logger.debug(" Save Sample ");
-                sample = sampleRepository.save(sample);
+                if (sample != null) {
+                    sample.setStatus(Sample.AVAILABLE_STATUS_VALUE);
+                    //logger.debug(" Save Sample ");
+                    sample = sampleRepository.save(sample);
+                } else {
+                    //Should not occur . through RTException
+                    //***
+                }
+            }
+
+            // Set Category for Acquisition
+            Acquisition acquisition = protocoalApplicationToCreate.getAcquisition();
+            if (nature.equals(AcquisitionJson.Nature.RESEARCH)) {
+                if (sample != null) {
+                    acquisition.setCategory(sample.getCategory());
+                }
+            } else if (nature.equals(AcquisitionJson.Nature.BLANK)) {
+                acquisition.setCategory(Category.BLANK);
+            } else if (nature.equals(AcquisitionJson.Nature.CONTROL_LC)) {
+                acquisition.setCategory(Category.LC_CTRL);
+            } else if (nature.equals(AcquisitionJson.Nature.CONTROL_INSTRUMENT)) {
+                acquisition.setCategory(Category.LC_CTRL);
             }
 
             // Create Protocol Application in Database

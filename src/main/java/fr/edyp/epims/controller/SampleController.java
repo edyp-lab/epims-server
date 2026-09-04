@@ -306,6 +306,11 @@ public class SampleController {
                         sampleJson.getDescription(), sampleJson.getVolume(), sampleJson.getStatus(), sampleJson.getQuantity(),
                         sampleJson.getOriginalName(), sampleJson.getRadioactivity(), sampleJson.getToxicity(), sampleJson.getCreationDate(),
                         new HashSet<>(), new HashSet<>(),new HashSet<>(),new HashSet<>(),new HashSet<>(),new HashSet<>(),new HashSet<>());
+                if (sampleJson.getCategory() != null) {
+                    sample.setCategory(sampleJson.getCategory());
+                } else {
+                    sample.setCategory(study.getCategory());
+                }
 
                 Sample sampleSaved = sampleRepository.save(sample);
 
@@ -383,7 +388,11 @@ public class SampleController {
                                         acquisition.getSpectrometer().getInstrument().getId(),
                                         acquisition.getNature(),
                                         acquisition.getDurationMin(),
-                                        acquisition.getSpectrometer().getInstrument().getName());
+                                        acquisition.getSpectrometer().getInstrument().getName(),
+                                        acquisition.getMethodName(),
+                                        acquisition.getInjectionVolume(),
+                                        acquisition.getVialInformation());
+                                acquisitionJson.setCategory(acquisition.getCategory());
 
                                 String sampleActorKey = (s.getActor() != null) ? s.getActor().getLogin() : null;
                                 String actorKey = (protocolApplication.getActor() != null) ? protocolApplication.getActor().getLogin() : null;

@@ -221,6 +221,7 @@ public class Converter {
             }
         }
         studyJson.setContactsKey(contactsKey);
+        studyJson.setCategory(study.getCategory());
 
         return studyJson;
     }
@@ -271,6 +272,7 @@ public class Converter {
             }
         }
         studyPathJson.setContactsKey(contactsKey);
+        studyPathJson.setCategory(study.getCategory());
 
         return studyPathJson;
     }
@@ -284,6 +286,8 @@ public class Converter {
                 sample.getDescription(), sample.getVolume(), sample.getStatus(), sample.getQuantity(),
                 sample.getOriginalName(), sample.getRadioactivity(), sample.getToxicity(), sample.getCreationDate(),
                 orderedProtocolApplications);
+
+        sampleJson.setCategory(sample.getCategory());
 
         return sampleJson;
     }

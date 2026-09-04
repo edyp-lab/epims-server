@@ -50,10 +50,11 @@ jwt.secret=[A UNIQUE KEY]
  
 ### Version 3.2.x
 
-* Modify Build to add script and config file access
+* Add Category in Study (Sample and Acquisition) to distinguish between Research, QC, Service or Control studies
 * Add controller for instrument Log file append
 * Improve MGF controller to allow user to specify acquisition name
-* Allow FTP port definition 
+* Allow FTP port definition
+* Modify Build to add script and config file access
 * Migrate to GitHub
 * Upgrade Java to version 17, springboot to 3.5.5 and all dependencies
 

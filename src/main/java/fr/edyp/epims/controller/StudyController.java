@@ -20,6 +20,7 @@ package fr.edyp.epims.controller;
 import fr.edyp.epims.database.dao.*;
 import fr.edyp.epims.database.entities.*;
 import fr.edyp.epims.database.entitytojson.Converter;
+import fr.edyp.epims.json.Category;
 import fr.edyp.epims.json.ProjectJson;
 import fr.edyp.epims.json.StudyJson;
 import fr.edyp.epims.path.PathManager;
@@ -79,6 +80,9 @@ public class StudyController {
     @Autowired
     PathManager pathManager;
 
+    @Autowired
+    SampleRepository sampleRepository;
+
     @Transactional
     @PostMapping("/addstudy")
     public ResponseEntity<StudyJson> addStudy(@RequestBody StudyJson studyJson) {
@@ -131,8 +135,17 @@ public class StudyController {
             studyJson.getContractualFrame(), Boolean.FALSE, studyJson.getCreationDate(), null,
            null,  studyJson.getStatus(), studyJson.getConfidential(), actors, studyContactsSet, null, null, studyJson.getComment()
         );
+        study.setCategory(studyJson.getCategory());
 
         study = studyRepository.save(study);
+
+        // Create the BLANK sample for the study
+        String blankSampleName = study.getNomenclatureTitle() + "_BLANK";
+        Sample blankSample = new Sample(blankSampleName, study, Sample.AVAILABLE_STATUS_VALUE);
+        blankSample.setCategory(Category.BLANK);
+        blankSample.setCreationDate(new Date());
+        blankSample.setActor(actor);
+        sampleRepository.save(blankSample);
 
         for (Integer contactKey : studyJson.getContactsKey()) {
             Optional<Contact> contactOpt = contactRepository.findById(contactKey);
