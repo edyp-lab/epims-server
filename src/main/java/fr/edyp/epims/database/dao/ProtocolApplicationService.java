@@ -42,7 +42,8 @@ public class ProtocolApplicationService {
 
 
 
-        String queryString = "SELECT new fr.edyp.epims.json.ProtocolApplicationJson(pa.id, s.name, s.actor.login, pa.actor.login, pa.name, pa.date, pa.comment, s.study.id, pa.acquisition.id, pa.acquisition.spectrometer.id, pa.acquisition.nature, pa.acquisition.durationMin) "+
+        String queryString = "SELECT new fr.edyp.epims.json.ProtocolApplicationJson(pa.id, s.name, s.actor.login, pa.actor.login, pa.name, pa.date, pa.comment, s.study.id, " +
+                "pa.acquisition.id, pa.acquisition.spectrometer.id, pa.acquisition.nature, pa.acquisition.durationMin, pa.acquisition.category) "+
                 " FROM ProtocolApplication as pa "+
                 " LEFT OUTER JOIN TreatmentsApplication as ta ON pa.id = ta.protocolApplication.id "+
                 " LEFT OUTER JOIN Sample as s ON ta.treatments.id = s.treatments.id ";
