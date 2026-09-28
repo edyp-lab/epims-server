@@ -96,6 +96,7 @@ public class GlobalExceptionHandler {
             case STUDY_NOT_FOUND:
             case ACQUISITION_NOT_FOUND:
             case PROGRAM_NOT_FOUND:
+            case CELLENONE_ROOT_ERROR:
                 return HttpStatus.NOT_FOUND;
             case INVALID_STUDY_DATA:
             case DUPLICATE_NOMENCLATURE:

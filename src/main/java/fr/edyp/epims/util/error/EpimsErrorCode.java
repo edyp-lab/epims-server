@@ -30,6 +30,7 @@ public enum EpimsErrorCode {
     PROJECT_DIRECTORY_CREATION_FAILED("EPIMS_011", "Failed to create project directory"),
     PROGRAM_DIRECTORY_CREATION_FAILED("EPIMS_012", "Failed to create program directory"),
     ACQUISITION_NOT_FOUND("EPIMS_013", "Acquisition not found"),
+    CELLENONE_ROOT_ERROR("EPIMS_014", "Invalid or undefined CellenOne Root path"),
 
     UNKNOWN_ERROR("EPIMS_999", "Unkonwn error");
 

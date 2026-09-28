@@ -181,8 +181,8 @@ public class FilePreferences extends AbstractPreferences {
 
         synchronized (m_file) {
             Properties p = new Properties();
-            try {
-                p.load(new FileInputStream(m_file));
+            try (FileInputStream fis = new FileInputStream(m_file)) {
+                p.load(fis);
 
                 StringBuilder sb = new StringBuilder();
                 getPath(sb);
@@ -225,7 +225,9 @@ public class FilePreferences extends AbstractPreferences {
                 String path = sb.toString();
 
                 if (m_file.exists()) {
-                    p.load(new FileInputStream(m_file));
+                    try (FileInputStream fis = new FileInputStream(m_file)) {
+                        p.load(fis);
+                    }
 
                     List<String> toRemove = new ArrayList<>();
 
@@ -255,7 +257,15 @@ public class FilePreferences extends AbstractPreferences {
                     }
                 }
 
-                p.store(new FileOutputStream(m_file), "FilePreferences");
+                if (!m_file.exists()) {
+                    File parentDir = m_file.getParentFile();
+                    if (parentDir != null && !parentDir.exists()) {
+                        parentDir.mkdirs();
+                    }
+                }
+                try (FileOutputStream fos = new FileOutputStream(m_file)) {
+                    p.store(fos, "FilePreferences");
+                }
             }
             catch (IOException e) {
                 throw new BackingStoreException(e);
