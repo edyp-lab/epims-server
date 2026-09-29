@@ -97,11 +97,14 @@ public class GlobalExceptionHandler {
             case ACQUISITION_NOT_FOUND:
             case PROGRAM_NOT_FOUND:
             case CELLENONE_ROOT_ERROR:
+            case COMPANY_NOT_FOUND:
                 return HttpStatus.NOT_FOUND;
             case INVALID_STUDY_DATA:
             case DUPLICATE_NOMENCLATURE:
             case DUPLICATE_TITLE:
                 return HttpStatus.BAD_REQUEST;
+            case DUPLICATE_COMPANY:
+                return HttpStatus.CONFLICT;
             case UNAUTHORIZED_ACCESS:
                 return HttpStatus.FORBIDDEN;
             default:

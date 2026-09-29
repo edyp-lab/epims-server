@@ -76,6 +76,21 @@ public class StartupHookListener implements ApplicationListener<ContextRefreshed
                     preferences.put(PreferencesKeys.JMS_HOST, env.getProperty("spring.activemq.broker-url"));
                     needFlush = true;
                 }
+
+                if (preferences.get(PreferencesKeys.CELLENONE_ROOT, null) == null) {
+                    // Parameters are not in the preference file
+                    String cellenoneRoot = env.getProperty("epims.cellenone.root");
+                    if (cellenoneRoot == null || cellenoneRoot.isEmpty()) {
+                        cellenoneRoot = env.getProperty("epims.repository");
+                        if (cellenoneRoot != null && !cellenoneRoot.isEmpty()) {
+                            cellenoneRoot = cellenoneRoot + java.io.File.separator + "cellenone";
+                        } else {
+                            cellenoneRoot = "";
+                        }
+                    }
+                    preferences.put(PreferencesKeys.CELLENONE_ROOT, cellenoneRoot);
+                    needFlush = true;
+                }
                 if (needFlush) {
                     preferences.flush();
                 }

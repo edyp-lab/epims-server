@@ -31,6 +31,8 @@ public enum EpimsErrorCode {
     PROGRAM_DIRECTORY_CREATION_FAILED("EPIMS_012", "Failed to create program directory"),
     ACQUISITION_NOT_FOUND("EPIMS_013", "Acquisition not found"),
     CELLENONE_ROOT_ERROR("EPIMS_014", "Invalid or undefined CellenOne Root path"),
+    COMPANY_NOT_FOUND("EPIMS_015", "Company not found"),
+    DUPLICATE_COMPANY("EPIMS_016", "Company already exists"),
 
     UNKNOWN_ERROR("EPIMS_999", "Unkonwn error");
 

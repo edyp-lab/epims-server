@@ -21,9 +21,9 @@ import fr.edyp.epims.database.dao.CompanyRepository;
 import fr.edyp.epims.database.entities.*;
 import fr.edyp.epims.database.entitytojson.Converter;
 import fr.edyp.epims.json.CompanyJson;
+import fr.edyp.epims.util.error.EpimServerException;
+import fr.edyp.epims.util.error.EpimsErrorCode;
 import fr.edyp.epims.version.DatabaseVersionManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,8 +37,6 @@ import java.util.*;
 @RequestMapping("/api")
 public class CompanyController {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(CompanyController.class);
-
     @Autowired
     CompanyRepository companyRepository;
 
@@ -47,85 +45,56 @@ public class CompanyController {
     @PostMapping("/modifycompany")
     public ResponseEntity<CompanyJson> modifyCompany(@RequestBody CompanyJson companyJson) {
 
-        try {
+        Company company = companyRepository.findByName(companyJson.getName())
+                .orElseThrow(() -> new EpimServerException(EpimsErrorCode.COMPANY_NOT_FOUND,
+                        "Company name: " + companyJson.getName()));
+        company.setManager(companyJson.getManager());
+        company.setAddress(companyJson.getAddress());
+        company.setPostalCode(companyJson.getPostalCode());
 
-            Optional<Company> companyOpt = companyRepository.findByName(companyJson.getName());
-            if (! companyOpt.isPresent()) {
-                return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
+        company = companyRepository.save(company);
+        DatabaseVersionManager.getSingleton().bumpVersion(CompanyJson.class, null);
 
-            Company company = companyOpt.get();
-            company.setManager(companyJson.getManager());
-            company.setAddress(companyJson.getAddress());
-            company.setPostalCode(companyJson.getPostalCode());
-
-            company = companyRepository.save(company);
-
-
-            CompanyJson companyJsonModified = Converter.convert(company);
-
-            DatabaseVersionManager.getSingleton().bumpVersion(CompanyJson.class, null);
-
-            return new ResponseEntity(companyJsonModified, HttpStatus.OK);
-
-        } catch (Exception e) {
-            LOGGER.error("error in /api/modifycompany", e);
-            return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        return new ResponseEntity<>(Converter.convert(company), HttpStatus.OK);
     }
 
     @Transactional
     @PostMapping("/createcompany")
     public ResponseEntity<CompanyJson> createCompany(@RequestBody CompanyJson companyJson) {
 
-        try {
-
-            // check that the company does not already exist
-            String name = companyJson.getName();
-            Optional<Company> companyOpt = companyRepository.findByName(name);
-            if (companyOpt.isPresent()) {
-                return new ResponseEntity(HttpStatus.CONFLICT);
-            }
-
-            Company company = new Company(companyJson.getName(),companyJson.getManager(), companyJson.getAddress(), companyJson.getPostalCode(), null);
-            company = companyRepository.save(company);
-
-            DatabaseVersionManager.getSingleton().bumpVersion(CompanyJson.class, null);
-
-            return new ResponseEntity(Converter.convert(company), HttpStatus.OK);
-
-        } catch (Exception e) {
-            LOGGER.error("error in /api/createcompany", e);
-            return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
+        String name = companyJson.getName();
+        if (companyRepository.findByName(name).isPresent()) {
+            throw new EpimServerException(EpimsErrorCode.DUPLICATE_COMPANY,
+                    "A company with name '" + name + "' already exists");
         }
+
+        Company company = new Company(companyJson.getName(), companyJson.getManager(),
+                companyJson.getAddress(), companyJson.getPostalCode(), null);
+        company = companyRepository.save(company);
+
+        DatabaseVersionManager.getSingleton().bumpVersion(CompanyJson.class, null);
+
+        return new ResponseEntity<>(Converter.convert(company), HttpStatus.OK);
     }
 
 
     @GetMapping("/companies")
     public ResponseEntity<List<CompanyJson>> getAllCompanies() {
-        try {
-            List<Company> companies = new ArrayList<>();
 
-            companyRepository.findAll().forEach(companies::add);
+        List<Company> companies = new ArrayList<>();
+        companyRepository.findAll().forEach(companies::add);
 
-            if (companies.isEmpty()) {
-                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-            }
-
-            ArrayList<CompanyJson> companyJsonArrayList = new ArrayList();
-            for (Company c : companies) {
-                CompanyJson companyJson = new CompanyJson(c.getName(), c.getManager(), c.getAddress(), c.getPostalCode());
-
-                companyJsonArrayList.add(companyJson);
-            }
-
-
-            return ControllerUtil.createResponseWithVersion(companyJsonArrayList, CompanyJson.class);
-
-        } catch (Exception e) {
-            LOGGER.error("error in /api/companies", e);
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        if (companies.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         }
+
+        ArrayList<CompanyJson> companyJsonArrayList = new ArrayList<>();
+        for (Company c : companies) {
+            CompanyJson companyJson = new CompanyJson(c.getName(), c.getManager(), c.getAddress(), c.getPostalCode());
+            companyJsonArrayList.add(companyJson);
+        }
+
+        return ControllerUtil.createResponseWithVersion(companyJsonArrayList, CompanyJson.class);
     }
 }
 

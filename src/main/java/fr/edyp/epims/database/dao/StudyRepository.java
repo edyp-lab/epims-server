@@ -17,12 +17,20 @@
 
 package fr.edyp.epims.database.dao;
 
+import fr.edyp.epims.database.entities.Actor;
 import fr.edyp.epims.database.entities.Study;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface StudyRepository  extends JpaRepository<Study, Integer> {
+
+    @Query("select distinct s from Study s left join s.members member "
+            + "where s.actor = :actor or member = :actor")
+    List<Study> findAllAccessibleByActor(@Param("actor") Actor actor);
 
     Optional<Study> findByNomenclatureTitle(String nomenclatureTitle);
 

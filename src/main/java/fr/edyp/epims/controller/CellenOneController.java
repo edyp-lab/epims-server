@@ -124,10 +124,8 @@ public class CellenOneController {
     public ResponseEntity<List<StudyJson>> getCellenOneStudies(Authentication authentication) {
         Actor actor = getAuthenticatedActor(authentication);
         List<StudyJson> studies = new ArrayList<>();
-        for (Study study : studyRepository.findAll()) {
-            if (actor.equals(study.getActor()) || study.getMembers().contains(actor)) {
-                studies.add(Converter.convert(study));
-            }
+        for (Study study : studyRepository.findAllAccessibleByActor(actor)) {
+            studies.add(Converter.convert(study));
         }
         studies.sort(Comparator.naturalOrder());
         return new ResponseEntity<>(studies, HttpStatus.OK);
