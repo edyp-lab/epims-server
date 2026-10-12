@@ -19,6 +19,14 @@ package fr.edyp.epims.database.dao;
 
 import fr.edyp.epims.database.entities.Plate;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
 
 public interface PlateRepository extends JpaRepository<Plate, String> {
+
+    @Query("select distinct p from Plate p join p.wells w join w.support support "
+            + "where support.sample.study.id = :studyId")
+    List<Plate> findByStudyIdWithSamples(@Param("studyId") int studyId);
 }

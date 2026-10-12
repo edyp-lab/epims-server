@@ -325,6 +325,7 @@ public class SampleController {
     }
 
 
+    @Transactional
     @GetMapping("/sampleforname/{samplename}")
     public ResponseEntity<SampleJson> getSampleForName(@PathVariable("samplename") String samplename) {
 

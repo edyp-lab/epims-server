@@ -555,6 +555,34 @@ public class PathManager {
 
     public String getFilesPath(Sample sample, String tagName) {
 
+        return getFilesPath(sample, tagName, false);
+    }
+
+    public String getFilesPath(Study study, String tagName) {
+
+        return getFilesPath(study, tagName, false);
+    }
+
+    public String getFilesPath(Study study, String tagName, boolean absolute) {
+
+        if (study == null || tagName == null)
+            return null;
+
+        String studyPath = getStudyPath(study);
+        String studyAbsolutePath = getStudyAbsolutePath(study);
+        if (studyPath == null || studyAbsolutePath == null)
+            return null;
+
+        String relativePath = studyPath + "/" + SAMPLES_DIR_NAME + "/" + DATA_DIR_NAME + "/" + tagName;
+        File absolutePath = new File(studyAbsolutePath, SAMPLES_DIR_NAME + "/" + DATA_DIR_NAME + "/" + tagName);
+        if (!absolutePath.exists() && !absolutePath.mkdirs())
+            return null;
+
+        return absolute ? absolutePath.toString() : relativePath;
+    }
+
+    public String getFilesPath(Sample sample, String tagName, boolean absolute) {
+
         if (sample == null || tagName == null)
             return null;
 
@@ -596,7 +624,7 @@ public class PathManager {
         if(!f.exists())
             f.mkdirs();
 
-        return path.toString();
+        return absolute ? fullPath.toString() : path.toString();
     }
 
     /*

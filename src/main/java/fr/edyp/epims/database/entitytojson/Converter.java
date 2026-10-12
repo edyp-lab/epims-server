@@ -288,6 +288,18 @@ public class Converter {
                 orderedProtocolApplications);
 
         sampleJson.setCategory(sample.getCategory());
+        String fatherSample = sample.getSampleFamiliesForSon().stream()
+                .map(family -> family.getSampleByFather().getName())
+                .findFirst()
+                .orElse(null);
+        ArrayList<String> sonSamples = sample.getSampleFamiliesForFather().stream()
+                .map(family -> family.getSampleBySon().getName())
+                .sorted()
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        sampleJson.setFatherSample(fatherSample);
+        sampleJson.setSonSamples(sonSamples);
+        sampleJson.setIsRoot(fatherSample == null);
+        sampleJson.setIsFather(!sonSamples.isEmpty());
 
         return sampleJson;
     }

@@ -35,5 +35,5 @@ public class PreferencesKeys {
     public final static String ARCHIVE_ROOT = "ARCHIVE_ROOT";
 
     public final static String CELLENONE_ROOT = "CELLENONE_ROOT";
-
+    public final static String CELLENONE_DONE_FOLDER = "DONE";
 }

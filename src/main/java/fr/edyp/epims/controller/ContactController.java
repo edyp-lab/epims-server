@@ -141,7 +141,7 @@ public class ContactController {
 
 
     @GetMapping("/contacts")
-    public ResponseEntity<List<ContactJson>> getAllContacts(@RequestParam(required = false) String lastName) {
+    public ResponseEntity<List<ContactJson>> getAllContacts(@RequestParam(name = "lastName", required = false) String lastName) {
         try {
 
 

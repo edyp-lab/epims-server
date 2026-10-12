@@ -243,18 +243,13 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<version>${project.parent.version}</version>
 			</plugin>
-			<!-- VDS: For dev to get deprecation info -->
-			<!--			<plugin>-->
-			<!--				<groupId>org.apache.maven.plugins</groupId>-->
-			<!--				<artifactId>maven-compiler-plugin</artifactId>-->
-			<!--				<version>3.14.0</version>-->
-			<!--				<configuration>-->
-			<!--				<compilerArgs>-->
-			<!--					<arg>-Xlint:deprecation</arg>-->
-			<!--					<arg>-Xlint:unchecked</arg>-->
-			<!--				</compilerArgs>-->
-			<!--				</configuration>-->
-			<!--			</plugin>-->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<parameters>true</parameters>
+				</configuration>
+			</plugin>
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
