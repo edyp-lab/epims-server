@@ -65,6 +65,8 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
@@ -158,9 +160,7 @@ public class CellenOneController {
                 String manipName = fileName.substring(0, fileName.length() - 4);
                 File jsonFile = new File(cellenoneRootDir, manipName + ".json");
                 if (jsonFile.exists() && jsonFile.isFile()) {
-                    Date creationDate = getFolderCreationDate(zipFile);
-                    ArrayList<CellenOneRunJson> runs = readRunsFromJsonFile(jsonFile, manipName);
-                    CellenOneManipJson manipJson = new CellenOneManipJson(manipName, creationDate, null, runs);
+                    CellenOneManipJson manipJson = createCellenOneManip(jsonFile, manipName);
                     manipList.add(manipJson);
                 }
             }
@@ -227,9 +227,10 @@ public class CellenOneController {
         }
 
         File[] manipFiles = resolveManipFiles(manipProperty.getManipulation());
+        CellenOneManipJson manipJson = createCellenOneManip( manipFiles[1], manipProperty.getManipulation());
 
         //  Create child Samples
-        createSampleFractionation(manipProperty, manipFiles);
+        createSampleFractionation(manipProperty, manipJson);
         LOGGER.debug(" CREATE RUN ROBOT  ! ");
         //  Copy data file in Study folder
         transferCellenOneData(manipProperty, study,manipFiles);
@@ -237,7 +238,7 @@ public class CellenOneController {
         return new ResponseEntity<>("Imported", HttpStatus.OK);
     }
 
-    private void createSampleFractionation(CellenOneImportJson manipProperty, File[] manipFiles ) {
+    private void createSampleFractionation(CellenOneImportJson manipProperty, CellenOneManipJson manipJson ) {
         LOGGER.debug(" CREATE FRACTIONNATION ! ");
 
     }
@@ -361,6 +362,46 @@ public class CellenOneController {
         return aManipFile;
     }
 
+
+    private CellenOneManipJson createCellenOneManip(File jsonFile, String manipName) {
+
+        CellenOneManipJson manipJson = readCellenOneManipInfoFromJsonFile(jsonFile, manipName);
+        ArrayList<CellenOneRunJson> runs = readRunsFromJsonFile(jsonFile, manipName);
+        manipJson.setRuns(runs);
+
+        return manipJson;
+    }
+
+    private CellenOneManipJson readCellenOneManipInfoFromJsonFile(File jsonFile, String defaultName) {
+        if (!jsonFile.exists() || !jsonFile.isFile()) {
+            return null;
+        }
+        try {
+            CellenOneManipJson manipJson = new CellenOneManipJson();
+            JsonNode rootNode = objectMapper.readTree(jsonFile);
+            if (rootNode != null) {
+                String manipName = (rootNode.has("name")) ?  rootNode.get("name").asText() : defaultName;
+                LocalDate manipDate = LocalDate.now();
+                if(rootNode.has("creation_date")) {
+                    String dateString = rootNode.get("creation_date").asText();
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                    manipDate = LocalDate.parse(dateString, formatter);
+                }
+                manipJson.setName(manipName);
+                manipJson.setDate(manipDate);
+            } else
+                manipJson.setName(defaultName);
+
+            return manipJson;
+        } catch (EpimServerException e) {
+            throw e;
+        } catch (Exception e) {
+            String msg = "Failed to read CellenOne manip JSON file: " + jsonFile.getAbsolutePath();
+            LOGGER.error(msg, e);
+            throw new EpimServerException(EpimsErrorCode.INVALID_CELLENONE_DATA, msg);
+        }
+    }
+
     private ArrayList<CellenOneRunJson> readRunsFromJsonFile(File jsonFile, String manipName) {
         ArrayList<CellenOneRunJson> runs = new ArrayList<>();
         if (!jsonFile.exists() || !jsonFile.isFile()) {
@@ -430,7 +471,7 @@ public class CellenOneController {
         } catch (Exception e) {
             String msg = "Failed to read CellenOne manip JSON file: " + jsonFile.getAbsolutePath();
             LOGGER.error(msg, e);
-            throw new EpimServerException(EpimsErrorCode.INVALID_STUDY_DATA, msg);
+            throw new EpimServerException(EpimsErrorCode.INVALID_CELLENONE_DATA, msg);
         }
 
         return runs;

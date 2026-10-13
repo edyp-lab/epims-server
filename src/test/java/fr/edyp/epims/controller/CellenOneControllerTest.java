@@ -36,6 +36,8 @@ import java.awt.Point;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.prefs.Preferences;
 
@@ -77,6 +79,8 @@ class CellenOneControllerTest {
         String jsonContent = """
             {
                 "name": "MANIP_MISMATCH",
+                "modification_date": "2026-10-06",
+                "creation_date": "2026-10-05",
                 "runs": [
                     {
                         "name": "Run_Bad",
@@ -128,6 +132,8 @@ class CellenOneControllerTest {
         String jsonContent = """
             {
                 "name": "20260225_MLE15_MANIP",
+                "modification_date": "2026-10-06",
+                "creation_date": "2026-10-05",
                 "runs": [
                     {
                         "name": "Run_R1",
@@ -165,6 +171,10 @@ class CellenOneControllerTest {
 
         assertEquals("20260225_MLE15_MANIP", manips.get(0).getName());
         assertNotNull(manips.get(0).getDate());
+        String dateString ="2026-10-05";
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        LocalDate expectedDate = LocalDate.parse(dateString, formatter);
+        assertEquals(expectedDate, manips.get(0).getDate());
         assertNotNull(manips.get(0).getRuns());
         assertEquals(1, manips.get(0).getRuns().size());
         assertEquals("Run_R1", manips.get(0).getRuns().get(0).getName());
