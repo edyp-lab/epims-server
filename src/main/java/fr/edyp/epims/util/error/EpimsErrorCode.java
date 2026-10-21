@@ -34,6 +34,7 @@ public enum EpimsErrorCode {
     COMPANY_NOT_FOUND("EPIMS_015", "Company not found"),
     DUPLICATE_COMPANY("EPIMS_016", "Company already exists"),
     INVALID_CELLENONE_DATA("EPIMS_017", "Invalid or undefined CellenOne Manip description"),
+    INSTRUMENT_ERROR("EPIMS_018", "Invalid or not found instrument"),
 
     UNKNOWN_ERROR("EPIMS_999", "Unkonwn error");
 

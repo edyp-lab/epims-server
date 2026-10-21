@@ -21,6 +21,8 @@ import fr.edyp.epims.database.dao.*;
 import fr.edyp.epims.database.entities.*;
 import fr.edyp.epims.database.entitytojson.Converter;
 import fr.edyp.epims.json.*;
+import fr.edyp.epims.util.error.EpimServerException;
+import fr.edyp.epims.util.error.EpimsErrorCode;
 import fr.edyp.epims.version.DatabaseVersionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,6 +66,9 @@ public class RobotPlanningController {
 
     @Autowired
     ProtocolApplicationRepository protocolApplicationRepository;
+
+    @Autowired
+    private RobotRepository robotRepository;
 
     @Autowired
     RunRobotRepository runRobotRepository;
@@ -309,8 +314,12 @@ public class RobotPlanningController {
                 null, null, null, null /* Set<Transfer> transfers ??? */, null, null, null /*runRobot*/);
         protocolApplication = protocolApplicationRepository.save(protocolApplication);
 
-
-        RunRobot runRobot = new RunRobot(plate, protocolApplication, null);
+        List<Robot>  tecanRobots = robotRepository.findByManufacturer("Tecan");
+        if(tecanRobots.isEmpty())
+            throw new EpimServerException(EpimsErrorCode.INSTRUMENT_ERROR,"Unable to found Tecan Robot ");
+        if(tecanRobots.size()>1)
+            LOGGER.warn("Found more than one Tecan Robot, use first !");
+        RunRobot runRobot = new RunRobot(plate, protocolApplication, tecanRobots.get(0));
         protocolApplication.setRunRobot(runRobot);
 
         runRobot = runRobotRepository.save(runRobot);

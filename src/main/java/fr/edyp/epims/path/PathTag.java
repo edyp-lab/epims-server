@@ -17,13 +17,24 @@
 
 package fr.edyp.epims.path;
 
-public class PathTag {
-    public final static String ANALYSIS_REQUEST = "analysis_request";
-    public final static String ANNOTATION = "annotation";
-    public final static String FORMS = "forms";
-    public final static String OTHERS = "others";
-    public final static String RAW = "RAW";
-    public final static String SCANS = "scans";
-    public final static String SPECTRA = "spectra";
+public enum PathTag {
+    ANALYSIS_REQUEST("analysis_request"),
+    ANNOTATION("annotation"),
+    FORMS("forms"),
+    OTHERS("others"),
+    RAW("RAW"),
+    SCANS("scans"),
+    SPECTRA("spectra");
+
+    private final String value;
+
+    PathTag(String value) {
+        this.value = value;
+    }
+
+    @Override
+    public String toString() {
+        return value;
+    }
 
 }

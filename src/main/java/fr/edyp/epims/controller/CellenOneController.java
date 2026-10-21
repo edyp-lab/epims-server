@@ -19,28 +19,19 @@ package fr.edyp.epims.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import fr.edyp.epims.database.dao.ActorRepository;
-import fr.edyp.epims.database.dao.AttachedFileRepository;
-import fr.edyp.epims.database.dao.FileLinkRepository;
-import fr.edyp.epims.database.dao.FileTagsRepository;
-import fr.edyp.epims.database.dao.PlateRepository;
-import fr.edyp.epims.database.dao.SampleRepository;
-import fr.edyp.epims.database.dao.StudyRepository;
-import fr.edyp.epims.database.dao.TagRepository;
+import fr.edyp.epims.database.dao.*;
 import fr.edyp.epims.database.entities.*;
 import fr.edyp.epims.database.entitytojson.Converter;
-import fr.edyp.epims.json.CellenOneImportJson;
-import fr.edyp.epims.json.CellenOneManipJson;
-import fr.edyp.epims.json.CellenOneSample;
-import fr.edyp.epims.json.CellenOneRunJson;
-import fr.edyp.epims.json.PlateJson;
-import fr.edyp.epims.json.StudyJson;
+import fr.edyp.epims.json.*;
 import fr.edyp.epims.path.PathManager;
 import fr.edyp.epims.path.PathTag;
 import fr.edyp.epims.preferences.PreferencesKeys;
+import fr.edyp.epims.service.FragmentCreationService;
 import fr.edyp.epims.preferences.ServerEpimsPreferences;
+import fr.edyp.epims.util.MiscUtils;
 import fr.edyp.epims.util.error.EpimServerException;
 import fr.edyp.epims.util.error.EpimsErrorCode;
+import fr.edyp.epims.version.DatabaseVersionManager;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
@@ -49,6 +40,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -67,13 +59,10 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
 import java.util.prefs.Preferences;
+import java.util.stream.Collectors;
 
 /**
  * Controller providing CellenOne manip an d Runs  endpoints
@@ -100,6 +89,9 @@ public class CellenOneController {
     private PlateRepository plateRepository;
 
     @Autowired
+    private RobotRepository robotRepository;
+
+    @Autowired
     private PathManager pathManager;
 
     @Autowired
@@ -113,6 +105,27 @@ public class CellenOneController {
 
     @Autowired
     FileTagsRepository fileTagRepository;
+
+    @Autowired
+    private TreatmentsRepository treatmentsRepository;
+
+    @Autowired
+    private TreatmentsApplicationRepository treatmentsApplicationRepository;
+
+    @Autowired
+    private FragmentCreationService fragmentCreationService;
+
+    @Autowired
+    private ProtocolApplicationRepository protocolApplicationRepository;
+
+    @Autowired
+    private RunRobotRepository runRobotRepository;
+
+    @Autowired
+    SupportRepository supportRepository;
+
+    @Autowired
+    WellRepository wellRepository;
 
 
     // VDS TO REMOVE,use cellenonemanipszip
@@ -189,19 +202,27 @@ public class CellenOneController {
     }
 
     /** Returns ePims plates containing at least one sample from the selected Study. */
-    @GetMapping("/cellenoneplates/{studyId}")
+    @GetMapping("/cellenoneplates/{studyId}/{robotId}")
     @Transactional(readOnly = true)
-    public ResponseEntity<List<PlateJson>> getCellenOnePlates(@PathVariable("studyId") int studyId, Authentication authentication) {
+    public ResponseEntity<List<PlateJson>> getCellenOnePlates(@PathVariable("studyId") int studyId,@PathVariable("robotId") int robotId, Authentication authentication) {
         Actor actor = getAuthenticatedActor(authentication);
         Study study = studyRepository.findById(studyId).orElseThrow(() -> new EpimServerException(EpimsErrorCode.STUDY_NOT_FOUND, "Study ID: " + studyId));
         if (!actor.equals(study.getActor()) && !study.getMembers().contains(actor)) {
             throw new EpimServerException(EpimsErrorCode.UNAUTHORIZED_ACCESS, "Unauthorized access to study: " + studyId);
         }
 
-        List<PlateJson> plates = plateRepository.findByStudyIdWithSamples(studyId).stream()
+//        List<Robot> scienionRobots =  robotRepository.findByManufacturer("Scienion");
+//        Robot aRobot = scienionRobots.stream().filter(r -> r.getId() == robotId).toList().get(0);
+        List<Plate> studyPlates =plateRepository.findByStudyIdWithSamples(studyId);
+        List<Plate> validPlates = studyPlates.stream().filter(pl -> {
+           long nb = pl.getRunRobots().stream().filter(rr -> rr.getRobot().getId() == robotId).count();
+           return nb > 0;
+        }).toList();
+        List<PlateJson> plates = validPlates.stream()
                 .map(plate -> new PlateJson(plate.getName(), plate.getXSize(), plate.getYSize()))
                 .sorted()
                 .toList();
+
         return new ResponseEntity<>(plates, HttpStatus.OK);
     }
 
@@ -216,108 +237,283 @@ public class CellenOneController {
      */
     @PostMapping("/cellenonemanips/import")
     @Transactional
-    public ResponseEntity<String> importCellenOneSources(@RequestBody CellenOneImportJson manipProperty, Authentication authentication) {
+    public ResponseEntity<String> importCellenOneSources( @RequestBody CellenOneImportJson importCOManipProperties, Authentication authentication) {
         Actor actor = getAuthenticatedActor(authentication);
-        if (manipProperty == null || manipProperty.getManipulation() == null) {
+        if (importCOManipProperties == null || importCOManipProperties.getManipulation() == null) {
             throw new EpimServerException(EpimsErrorCode.INVALID_STUDY_DATA, "CellenOne import data is required");
         }
-        Study study = studyRepository.findById(manipProperty.getStudy()).orElseThrow(() -> new EpimServerException(EpimsErrorCode.STUDY_NOT_FOUND, "Study ID: " + manipProperty.getStudy()));
+        Study study = studyRepository.findById(importCOManipProperties.getStudy()).orElseThrow(() -> new EpimServerException(EpimsErrorCode.STUDY_NOT_FOUND, "Study ID: " + importCOManipProperties.getStudy()));
         if (!actor.equals(study.getActor()) && !study.getMembers().contains(actor)) {
             throw new EpimServerException(EpimsErrorCode.UNAUTHORIZED_ACCESS, "Unauthorized access to study");
         }
 
-        File[] manipFiles = resolveManipFiles(manipProperty.getManipulation());
-        CellenOneManipJson manipJson = createCellenOneManip( manipFiles[1], manipProperty.getManipulation());
+        File[] manipFiles = resolveManipFiles(importCOManipProperties.getManipulation());
+        CellenOneManipJson manipJson = createCellenOneManip( manipFiles[1], importCOManipProperties.getManipulation());
 
         //  Create child Samples
-        createSampleFractionation(manipProperty, manipJson);
-        LOGGER.debug(" CREATE RUN ROBOT  ! ");
-        //  Copy data file in Study folder
-        transferCellenOneData(manipProperty, study,manipFiles);
+        LOGGER.debug("  --- CellenOne Import Step 1.: CREATE FRACTIONATION. ");
+        Map<SampleJson, CellenOneSampleInfo> createdSampletoCoSample = createSampleFractionation(importCOManipProperties, manipJson);
 
+        LOGGER.debug("  --- CellenOne Import Step 2.: CREATE RUN ROBOT ");
+        Map<String, RunRobot> runRobotByPlateName = createRunRobot(importCOManipProperties, manipJson,createdSampletoCoSample,actor);
+
+        //  Copy data file in Study folder
+        LOGGER.debug("  --- CellenOne Import Step 3.: TRANSFER and CREATE DATA ");
+        transferCellenOneData(importCOManipProperties, study, manipFiles, runRobotByPlateName);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        // StudyJson : because Study is modified via its samples
+        DatabaseVersionManager.getSingleton().bumpVersion(StudyJson.class, auth.getPrincipal().toString());
         return new ResponseEntity<>("Imported", HttpStatus.OK);
     }
 
-    private void createSampleFractionation(CellenOneImportJson manipProperty, CellenOneManipJson manipJson ) {
-        LOGGER.debug(" CREATE FRACTIONNATION ! ");
+    class CellenOneSampleInfo {
+        CellenOneSample coSample;
+        String runName;
 
+        public CellenOneSampleInfo(CellenOneSample cellenOneSample, String runName){
+            this.coSample= cellenOneSample;
+            this.runName = runName;
+        }
+    }
+    public record CreatedSamplesMap(FragmentsGroupToCreateJson fragmentGroup, HashMap<String, CellenOneSampleInfo> cellenOneInfoByName){}
+
+
+    private Map<String, RunRobot> createRunRobot(CellenOneImportJson importCOManipProperties, CellenOneManipJson manipJson, Map<SampleJson, CellenOneSampleInfo> cellenOneSamplesBySampleJson, Actor actor) {
+        List<CellenOneImportJson.PlateAssignment> plateAssignments  = importCOManipProperties.getPlateAssignments();
+        Map<String, Plate> plateByFinalName = new HashMap<>();
+        Map<String, String> plateFinalNameByCOPlateKey = new HashMap<>();
+        try {
+            plateAssignments.forEach(plateAssignment -> {
+                Plate epimsPlate = getOrCreatePlate(manipJson, plateAssignment, plateByFinalName);
+                plateFinalNameByCOPlateKey.put(plateAssignment.getRun()+plateAssignment.getSourcePlate(), epimsPlate.getName());
+            });
+        } catch (Exception e){
+            throw new EpimServerException(EpimsErrorCode.CELLENONE_ROOT_ERROR, "Invalid JSON for manip "+importCOManipProperties.getManipulation()+": "+e.getMessage());
+        }
+
+        Map<String, RunRobot> runRobotPlateMap = createRunRobotProtocolApps(importCOManipProperties, manipJson,plateByFinalName, actor);
+        createWellsSupport(cellenOneSamplesBySampleJson, runRobotPlateMap, plateByFinalName,plateFinalNameByCOPlateKey);
+        return runRobotPlateMap;
     }
 
-    private void transferCellenOneData(CellenOneImportJson request, Study study, File[] manipFiles ) {
+    private  void createWellsSupport(Map<SampleJson, CellenOneSampleInfo> cellenOneSamplesBySampleJson, Map<String, RunRobot> runRobotPlateMap, Map<String, Plate> plateByName,Map<String, String> plateFinalNameByCOPlateKey){
+        cellenOneSamplesBySampleJson.forEach((sample, coSampleInfo) ->{
+            Sample currentSample = sampleRepository.findById(sample.getName()).get(); //should exist, just created
+            Support support = new Support(currentSample, 0, null, null, null, null);
+            support = supportRepository.save(support);
+
+            String coPlateKey = coSampleInfo.runName+coSampleInfo.coSample.getPlate();
+            Plate currentPlate = plateByName.get(plateFinalNameByCOPlateKey.get(coPlateKey));
+            Well well = new Well(currentPlate, support, coSampleInfo.coSample.getPlateCoordinate().x, coSampleInfo.coSample.getPlateCoordinate().y);
+            well = wellRepository.save(well);
+            support.setWell(well);
+            supportRepository.save(support);
+
+          Treatments treatments = currentSample.getTreatments();
+            int rank = 0;
+            if (treatments == null) {
+                treatments = new Treatments();
+                treatmentsRepository.save(treatments);
+                currentSample.setTreatments(treatments);
+                sampleRepository.save(currentSample);
+            } else {
+                Set<TreatmentsApplication> treatmentsApplicationSet = treatments.getTreatmentsApplications();
+                if (treatmentsApplicationSet != null) {
+                    rank = treatmentsApplicationSet.size();
+                }
+            }
+
+            RunRobot runRobot =  runRobotPlateMap.get(currentPlate.getName());
+            TreatmentsApplicationId treatmentsApplicationId = new TreatmentsApplicationId(treatments.getId(), runRobot.getId());
+            TreatmentsApplication treatmentsApplication = new TreatmentsApplication(treatmentsApplicationId, runRobot.getProtocolApplication(), treatments, rank);
+            treatmentsApplicationRepository.save(treatmentsApplication);
+        });
+    }
+
+    private  Map<String, RunRobot> createRunRobotProtocolApps(CellenOneImportJson importCOManipProperties, CellenOneManipJson manipJson, Map<String, Plate> plateByName, Actor actor){
+
+        Date mDate = MiscUtils.asDate(manipJson.getDate());
+        Robot robot = robotRepository.findById(importCOManipProperties.getRobot()).orElseThrow(() -> new EpimServerException(EpimsErrorCode.CELLENONE_ROOT_ERROR, "Unable to found Robot with Id : " + importCOManipProperties.getRobot()));
+        HashMap<String, RunRobot> paByPlateName = new HashMap<>();
+        boolean useIndex = plateByName.size()  > 1;
+        int index =0;
+        for(String plateName : plateByName.keySet()) {
+            String paName = useIndex ? importCOManipProperties.getManipulation() + "_runRobot"+index++ : importCOManipProperties.getManipulation() + "_runRobot" ;
+
+            ProtocolApplication protocolApplication = new ProtocolApplication(actor, null, paName, mDate, null, null,
+                    null, null, null, null, null, null, null /*runRobot*/);
+            protocolApplication = protocolApplicationRepository.save(protocolApplication);
+
+
+            RunRobot runRobot = new RunRobot(plateByName.get(plateName), protocolApplication, robot);
+            protocolApplication.setRunRobot(runRobot);
+
+            runRobot = runRobotRepository.save(runRobot);
+            protocolApplication = protocolApplicationRepository.save(protocolApplication);
+            paByPlateName.put(plateName, runRobot);
+        }
+        return paByPlateName;
+    }
+
+
+    private Plate getOrCreatePlate(CellenOneManipJson importCOManipProperties, CellenOneImportJson.PlateAssignment plateAssignment, Map<String, Plate> plateByName) {
+        Plate epimsPlate = null;
+        if (plateAssignment.isNewPlate()) {
+            if (plateAssignment.getPlate() == null || plateAssignment.getPlate().isBlank() || plateAssignment.getPlate().equals("UNKNOWN")) {
+                throw new EpimServerException(EpimsErrorCode.CELLENONE_ROOT_ERROR, "Invalid new Plate assignment");
+            }
+            epimsPlate = plateByName.get(plateAssignment.getPlate());
+            if (epimsPlate != null)
+                return epimsPlate;
+            String runPlate = plateAssignment.getRun();
+            String coPlateName = plateAssignment.getSourcePlate();
+            //Search for plate in CellenOneManipJson
+            CellenOnePlateJson aPlate = importCOManipProperties.getRuns().stream().filter(run -> Objects.equals(run.getName(), runPlate)).toList().get(0).getPlates().stream().filter(p ->Objects.equals(p.getName(), coPlateName)).toList().get(0);
+            //Create Plate
+            Plate newPlate = new Plate(plateAssignment.getPlate(), aPlate.getSize().x, aPlate.getSize().y);
+            epimsPlate = plateRepository.save(newPlate);
+            plateByName.put(plateAssignment.getPlate(), epimsPlate);
+        } else {
+            if (plateAssignment.getPlate() == null || plateAssignment.getPlate().equals("UNKNOWN"))
+                throw new EpimServerException(EpimsErrorCode.CELLENONE_ROOT_ERROR, "A Plate must be selected");
+            Optional<Plate> epimsPlateOp = plateRepository.findById(plateAssignment.getPlate());
+            if(epimsPlateOp.isEmpty())
+                throw new EpimServerException(EpimsErrorCode.CELLENONE_ROOT_ERROR, "Unable to find a Plate "+ plateAssignment.getPlate());
+            epimsPlate = epimsPlateOp.get();
+            plateByName.put(plateAssignment.getPlate(), epimsPlate);
+        }
+        return epimsPlate;
+    }
+
+    private Map<SampleJson, CellenOneSampleInfo> createSampleFractionation(CellenOneImportJson importCOManipProperties, CellenOneManipJson manipJson ) {
+
+        CreatedSamplesMap result = createFragmentsGroup(importCOManipProperties, manipJson);
+        FragmentsGroupToCreateJson fragmentsGroup = result.fragmentGroup;
+        Map<String, CellenOneSampleInfo> cellenOneByName = result.cellenOneInfoByName;
+
+        List<SampleJson> createdSample =  fragmentCreationService.createFragments(fragmentsGroup);
+        Map<String, SampleJson> createdSampleByName = createdSample.stream().collect(Collectors.toMap(SampleJson::getName, Function.identity()));
+        Map<SampleJson, CellenOneSampleInfo> cellenOneSampleByCreatedSample = new HashMap<>();
+        cellenOneByName.forEach( (spl, coSpl)  -> {
+            cellenOneSampleByCreatedSample.put(createdSampleByName.get(spl), coSpl);
+        });
+
+        return cellenOneSampleByCreatedSample;
+    }
+
+
+    CreatedSamplesMap createFragmentsGroup(CellenOneImportJson importManipMapping, CellenOneManipJson manipJson) {
+        FragmentsGroupToCreateJson fragmentsGroup = new FragmentsGroupToCreateJson();
+        HashMap<String, CellenOneSampleInfo> cellenOneSamplePerSampleName = new HashMap<>();
+        HashMap<String, ArrayList<FragmentToCreateJson>> parentToFragmentsMap = fragmentsGroup.getParentToFragmentsMap();
+        if (importManipMapping == null || manipJson == null || importManipMapping.getAssignments() == null || manipJson.getRuns() == null) {
+            return new CreatedSamplesMap(fragmentsGroup, cellenOneSamplePerSampleName); //should not happen
+        }
+
+
+        for (CellenOneImportJson.Assignment assignment : importManipMapping.getAssignments()) {
+            if (assignment == null || assignment.getSample() == null) {
+                LOGGER.warn(" Import CelleOne Manip : INVALID Assigment structure ");
+                continue;
+            }
+
+            ArrayList<FragmentToCreateJson> fragments = parentToFragmentsMap.computeIfAbsent(assignment.getSample(), key -> new ArrayList<>());
+            CellenOneRunJson runOfAss = manipJson.getRun(assignment.getRun());
+            for (CellenOneSample sample : runOfAss.getSamplesForSource(assignment.getSource())) {
+                FragmentToCreateJson fragment = new FragmentToCreateJson();
+                fragment.setParentSampleKey(assignment.getSample());
+                fragment.setName(createFragmentName(assignment.getSample(), runOfAss, sample));
+                fragment.setDescription(createFragmentDescription(runOfAss, sample));
+                fragments.add(fragment);
+                cellenOneSamplePerSampleName.put(fragment.getName(), new CellenOneSampleInfo(sample, runOfAss.getName()));
+            }
+        }
+        return new CreatedSamplesMap(fragmentsGroup, cellenOneSamplePerSampleName);
+    }
+
+    private String createFragmentName(String parentSample, CellenOneRunJson run, CellenOneSample sample) {
+        Point coordinate = sample.getPlateCoordinate();
+        return parentSample + "_" + run.getName() + "_" + sample.getSource() + "_" + sample.getPlate() + "_" + coordinate.x + "_" + coordinate.y;
+    }
+
+    private String createFragmentDescription(CellenOneRunJson run, CellenOneSample sample) {
+        Point coordinate = sample.getPlateCoordinate();
+        return "CellenOne run=" + run.getName() + ", source=" + sample.getSource() + ", plate=" + sample.getPlate() + ", coordinate=" + coordinate.x + ":" + coordinate.y;
+    }
+
+    private void transferCellenOneData(CellenOneImportJson request, Study study, File[] manipFiles, Map<String, RunRobot> runRobotByPlateName ) {
         try {
-            LOGGER.debug(" TRANSFER DATA  ! ");
-            if(false) {
-                for (CellenOneImportJson.Assignment assignment : request.getAssignments()) {
-                    if (assignment == null || assignment.getSample() == null) {
-                        throw new EpimServerException(EpimsErrorCode.INVALID_STUDY_DATA, "Every CellenOne source must have a Sample");
-                    }
-                    Sample sample = sampleRepository.findByName(assignment.getSample()).orElseThrow(() -> new EpimServerException(EpimsErrorCode.INVALID_STUDY_DATA, "Sample does not exist: " + assignment.getSample()));
-                    if (!study.equals(sample.getStudy())) {
-                        throw new EpimServerException(EpimsErrorCode.INVALID_STUDY_DATA, "Sample does not belong to the selected Study: " + assignment.getSample());
-                    }
+
+            String studyPath = pathManager.getFilesPath(study, PathTag.ANNOTATION.toString(), true);
+            String relativeStudyPath = pathManager.getFilesPath(study, PathTag.ANNOTATION.toString(), false);
+            if (studyPath == null) {
+                throw new EpimServerException(EpimsErrorCode.STUDY_DIRECTORY_ACCESS_ERROR, "Study annotation-data directory is not accessible: " + study.getNomenclatureTitle());
+            }
+
+            Path studyDir = Path.of(studyPath);
+            Path doneDir = getCellenOneDONEPath().toPath();
+            File zipFile = null;
+            long zipSize = 0l;
+            for (File file : manipFiles) {
+                if (FilenameUtils.getExtension(file.getName()).equals("zip")) {
+                    zipFile = file;
+                    zipSize= FileUtils.sizeOf(zipFile) / 1024 / 1024;
                 }
 
-                String studyPath = pathManager.getFilesPath(study, PathTag.OTHERS, true);
-                String relativeStudyPath = pathManager.getFilesPath(study, PathTag.OTHERS, false);
-                if (studyPath == null) {
-                    throw new EpimServerException(EpimsErrorCode.STUDY_DIRECTORY_ACCESS_ERROR, "Study other-data directory is not accessible: " + study.getNomenclatureTitle());
-                }
+                Path sourcePath = file.toPath();
+                Path destination = studyDir.resolve(file.getName());
+                Files.copy(sourcePath, destination, StandardCopyOption.REPLACE_EXISTING);
+                Path donePath = doneDir.resolve(file.getName());
+                Files.move(sourcePath, donePath, StandardCopyOption.REPLACE_EXISTING);
+            }
 
-                Path studyDir = Path.of(studyPath);
-                Path doneDir = getCellenOneDONEPath().toPath();
-                File zipFile = null;
-                for (File file : manipFiles) {
-                    if (FilenameUtils.getExtension(file.getName()).equals("zip"))
-                        zipFile = file;
+            assert zipFile != null;
+            // ----- Create Associated file data
+            int studyId = study.getId();
 
-                    Path sourcePath = file.toPath();
-                    Path destination = studyDir.resolve(file.getName());
-                    Files.copy(sourcePath, destination, StandardCopyOption.REPLACE_EXISTING);
-                    Path donePath = doneDir.resolve(file.getName());
-                    Files.move(sourcePath, donePath, StandardCopyOption.REPLACE_EXISTING);
-                }
+            // Create AttachedFile without fileLinks and fileTags
+            List<RunRobot> allRunRobots = runRobotByPlateName.values().stream().toList();
+            Date manipDate = allRunRobots.get(0).getProtocolApplication().getDate();
+            //Create One attached file for zip file to associated to all run robots
+            AttachedFile attachedFileToCreate = new AttachedFile();
+            attachedFileToCreate.setDate(manipDate);
+            attachedFileToCreate.setName(zipFile.getName());
+            attachedFileToCreate.setPath(relativeStudyPath);
+            attachedFileToCreate.setSizeMo((double) zipSize);
+            attachedFileToCreate.setArchived(null);
 
-                assert zipFile != null;
-                // ----- Create Associated file data
-                int studyId = study.getId();
-                // Create AttachedFile without fileLinks and fileTags
-                Date manipDate = getFolderCreationDate(zipFile); //To be read from  JSON ! (and saved before)
-                AttachedFile attachedFileToCreate = new AttachedFile();
-                attachedFileToCreate.setDate(manipDate);
-                attachedFileToCreate.setName(zipFile.getName());
-                attachedFileToCreate.setPath(relativeStudyPath);
-                attachedFileToCreate.setSizeMo((double) (FileUtils.sizeOf(zipFile) / 1024 / 1024));
-                attachedFileToCreate.setArchived(null);
-                Set<FileLink> fileLinkSet = new HashSet<>();
-                attachedFileToCreate.setFileLinks(fileLinkSet);
-                Set<FileTags> fileTagsSet = new HashSet<>();
-                attachedFileToCreate.setFileTagses(fileTagsSet);
-                AttachedFile attachedFileCreated = attachedFileRepository.save(attachedFileToCreate);
+            Set<FileLink> fileLinkSet = new HashSet<>();
+            attachedFileToCreate.setFileLinks(fileLinkSet);
+            Set<FileTags> fileTagsSet = new HashSet<>();
+            attachedFileToCreate.setFileTagses(fileTagsSet);
+            AttachedFile attachedFileCreated = attachedFileRepository.save(attachedFileToCreate);
+
+            // Associate to  ANNOTATION tag to files
+            Tag annotationTag = tagRepository.findByName(PathTag.ANNOTATION.name()).get(); //SHOULD exist
+            FileTagsId fileTagsId = new FileTagsId(attachedFileCreated.getId(), PathTag.ANNOTATION.name());
+            FileTags fileTag = new FileTags(fileTagsId, attachedFileCreated, annotationTag, 0);
+            FileTags fileTagCreated = fileTagRepository.save(fileTag);
+            fileTagsSet.add(fileTagCreated);
+            attachedFileCreated = attachedFileRepository.save(attachedFileCreated);
+
+            for(RunRobot rr : allRunRobots) {
 
                 // Create FileLink
                 FileLink fileLinkToCreate = new FileLink();
-                fileLinkToCreate.setAssociatedEntity("study");
+                fileLinkToCreate.setAssociatedEntity("run_robot");
                 fileLinkToCreate.setAttachedFile(attachedFileCreated);
-                fileLinkToCreate.setIdFk(studyId);
+                fileLinkToCreate.setIdFk(rr.getId());
                 FileLink fileLinkCreated = fileLinkRepository.save(fileLinkToCreate);
 
                 // Create FileTag
-
-                // Associate to  RAW files
-                Tag annotationTag = tagRepository.findByName(PathTag.ANNOTATION).get(); //SHOULD exist
-                FileTagsId fileTagsId = new FileTagsId(attachedFileToCreate.getId(), PathTag.ANNOTATION);
-                FileTags fileTag = new FileTags(fileTagsId, attachedFileToCreate, annotationTag, 0);
-                FileTags fileTagCreated = fileTagRepository.save(fileTag);
-
                 fileLinkSet.add(fileLinkCreated);
-                fileTagsSet.add(fileTagCreated);
-                attachedFileCreated = attachedFileRepository.save(attachedFileToCreate);
-
-                fileTagsSet.add(fileTag);
                 fileLinkCreated.setAttachedFile(attachedFileCreated);
-                fileLinkCreated = fileLinkRepository.save(fileLinkToCreate);
+                fileLinkCreated = fileLinkRepository.save(fileLinkCreated);
 
             }
+            attachedFileRepository.save(attachedFileToCreate);
 
         } catch (IOException e) {
             LOGGER.error("Failed to transfer CellenOne sources for {}", request.getManipulation(), e);
@@ -429,39 +625,28 @@ public class CellenOneController {
                         } else
                             throw new EpimServerException(EpimsErrorCode.INVALID_CELLENONE_DATA, "No Source defined for " + runName);
 
-                        ArrayList<String> plates = new ArrayList<>();
+                        ArrayList<CellenOnePlateJson> plates = new ArrayList<>();
                         JsonNode platesNode = runNode.get("plates");
                         if (platesNode != null) {
                             if (platesNode.isArray()) {
                                 for (JsonNode pNode : platesNode) {
-                                    plates.add(pNode.asText());
+                                    String plateName = pNode.has("name") ? pNode.get("name").asText() : null;
+                                    JsonNode sizeNode = pNode.get("size");
+                                    Point plateSize = readPoint(sizeNode);
+                                    if (plateName == null || plateSize == null) {
+                                        throw new EpimServerException(EpimsErrorCode.INVALID_CELLENONE_DATA, "Invalid Target Plate definition for " + runName);
+                                    }
+                                    plates.add(new CellenOnePlateJson(plateName, plateSize));
                                 }
-                            } else if (platesNode.isTextual()) {
-                                plates.add(platesNode.asText());
-                            }
+                            } else
+                                throw new EpimServerException(EpimsErrorCode.INVALID_CELLENONE_DATA, "Invalid Target Plate list for " + runName);
                         } else
                             throw new EpimServerException(EpimsErrorCode.INVALID_CELLENONE_DATA, "No Target Plate defined for " + runName);
-
-                        ArrayList<Point> plateSizes = new ArrayList<>();
-                        JsonNode plateSizeNode = runNode.get("plate_size");
-                        if (plateSizeNode != null && plateSizeNode.isArray()) {
-                            for (JsonNode psNode : plateSizeNode) {
-                                int x = psNode.has("x") ? psNode.get("x").asInt() : 0;
-                                int y = psNode.has("y") ? psNode.get("y").asInt() : 0;
-                                plateSizes.add(new Point(x, y));
-                            }
-                        }
 
                         ArrayList<CellenOneSample> samples = readSamples(runNode);
                         Integer samplesCount = samples.size();
 
-                        if (plates.size() != plateSizes.size()) {
-                            String msg = "Plates and PlateSizes size are not equal for run: " + runName + " in manip: " + manipName;
-                            LOGGER.warn(msg);
-                            throw new EpimServerException(EpimsErrorCode.INVALID_CELLENONE_DATA, msg);
-                        }
-
-                        CellenOneRunJson run = new CellenOneRunJson(runName, sources, plates, plateSizes, samples, samplesCount);
+                        CellenOneRunJson run = new CellenOneRunJson(runName, sources, plates, samples, samplesCount);
                         runs.add(run);
                     }
                 }

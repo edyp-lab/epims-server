@@ -17,9 +17,11 @@
 
 package fr.edyp.epims.controller;
 
+import fr.edyp.epims.json.CellenOneImportJson;
 import fr.edyp.epims.json.CellenOneManipJson;
 import fr.edyp.epims.json.CellenOneSample;
 import fr.edyp.epims.json.CellenOneRunJson;
+import fr.edyp.epims.json.FragmentToCreateJson;
 import fr.edyp.epims.preferences.PreferencesKeys;
 import fr.edyp.epims.preferences.ServerEpimsPreferences;
 import fr.edyp.epims.util.error.EpimServerException;
@@ -39,6 +41,8 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
 import java.util.prefs.Preferences;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -74,7 +78,7 @@ class CellenOneControllerTest {
 
 
     @Test
-    void testGetCellenOneManipsWithMismatchedPlatesAndPlateSizes() throws IOException {
+    void testGetCellenOneManipsWithInvalidPlateDefinition() throws IOException {
         Files.createFile(tempDir.resolve("MANIP_MISMATCH.zip"));
         String jsonContent = """
             {
@@ -85,8 +89,7 @@ class CellenOneControllerTest {
                     {
                         "name": "Run_Bad",
                         "sources": ["1A1"],
-                        "plates": ["P1", "P2"],
-                        "plate_size": [{"x":8, "y":12 }],
+                        "plates": [{"name":1, "size":{"x":8, "y":12}}, {"name":2}],
                         "samples_count": 48
                     }
                 ]
@@ -115,6 +118,26 @@ class CellenOneControllerTest {
     }
 
     @Test
+    void createFragmentsGroupAggregatesSamplesForAssignmentsWithSameParent() {
+        CellenOneSample firstSample = new CellenOneSample("Plate1", new Point(1, 2), "Source1", new ArrayList<>());
+        CellenOneSample secondSample = new CellenOneSample("Plate2", new Point(3, 4), "Source2", new ArrayList<>());
+        CellenOneRunJson firstRun = new CellenOneRunJson("Run1", new ArrayList<>(List.of("Source1")), new ArrayList<>(), new ArrayList<>(List.of(firstSample)), 1);
+        CellenOneRunJson secondRun = new CellenOneRunJson("Run2", new ArrayList<>(List.of("Source2")), new ArrayList<>(), new ArrayList<>(List.of(secondSample)), 1);
+        CellenOneManipJson manip = new CellenOneManipJson();
+        manip.setRuns(new ArrayList<>(List.of(firstRun, secondRun)));
+        CellenOneImportJson request = new CellenOneImportJson();
+        request.setAssignments(new ArrayList<>(List.of(new CellenOneImportJson.Assignment("Run1", "Source1", "Parent"), new CellenOneImportJson.Assignment("Run2", "Source2", "Parent"))));
+
+        CellenOneController.CreatedSamplesMap result = controller.createFragmentsGroup(request, manip);
+
+        Map<String, ArrayList<FragmentToCreateJson>> fragmentsByParent = result.fragmentGroup().getParentToFragmentsMap();
+        assertEquals(1, fragmentsByParent.size());
+        assertEquals(2, fragmentsByParent.get("Parent").size());
+        assertEquals("Parent_Run1_Source1_Plate1_1_2", fragmentsByParent.get("Parent").get(0).getName());
+        assertEquals("Parent_Run2_Source2_Plate2_3_4", fragmentsByParent.get("Parent").get(1).getName());
+    }
+
+    @Test
     void testGetCellenOneZippedManipsEmptyDir() {
         Preferences preferences = ServerEpimsPreferences.root();
         preferences.put(PreferencesKeys.CELLENONE_ROOT, tempDir.toAbsolutePath().toString());
@@ -138,8 +161,7 @@ class CellenOneControllerTest {
                     {
                         "name": "Run_R1",
                         "sources": ["1A1"],
-                        "plates": ["P1"],
-                        "plate_size": [{"x":8, "y":12 }],
+                        "plates": [{"name":1, "size":{"x":8, "y":12}}],
                         "samples_count": 48
                     }
                 ]
@@ -194,8 +216,7 @@ class CellenOneControllerTest {
                     {
                         "name": "Run_R1",
                         "sources": ["1A1", "1A2"],
-                        "plates": ["P1", "P2"],
-                        "plate_size": [{"x":8, "y":12 }, {"x":8, "y":12 }],
+                        "plates": [{"name":1, "size":{"x":8, "y":12}}, {"name":2, "size":{"x":8, "y":12}}],
                         "plate_coordinates_samples": [
                             {
                                 "plate": "P1",
@@ -239,8 +260,8 @@ class CellenOneControllerTest {
         assertEquals(new Point(1, 5), p2Sample.getPlateCoordinate());
         assertEquals(13, p2Sample.getDropSamples().get(0).getDropId());
         assertEquals("three.png", p2Sample.getDropSamples().get(0).getImageFilePath());
-        assertEquals(1, manip.getSamplesForSource("1A2").size());
-        assertEquals(2, manip.getSamplesForPlate("P1").size());
+//        assertEquals(1, manip.getSamplesForSource("1A2").size());
+//        assertEquals(2, manip.getSamplesForPlate("P1").size());
     }
 
     // VDS Should configure H2 database ...

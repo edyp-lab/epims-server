@@ -23,6 +23,7 @@ import fr.edyp.epims.database.entities.*;
 import fr.edyp.epims.database.entitytojson.Converter;
 import fr.edyp.epims.json.*;
 import fr.edyp.epims.path.PathManager;
+import fr.edyp.epims.service.FragmentCreationService;
 import fr.edyp.epims.version.DatabaseVersionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,105 +97,13 @@ public class SampleController {
     @Autowired
     PathManager pathManager;
 
+    @Autowired
+    FragmentCreationService fragmentCreationService;
+
     @Transactional
     @PostMapping("/createfragment")
     public ResponseEntity<List<SampleJson>> createFragments(@RequestBody FragmentsGroupToCreateJson fragmentsGroupToCreateJson) {
-
-            Date today = new Date();
-            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
-            String todayString = format.format(today);
-
-            List<SampleJson> sampleJsons = new ArrayList<>();
-
-
-            HashMap<String, ArrayList<FragmentToCreateJson>> fragmentsGroupsMap = fragmentsGroupToCreateJson.getParentToFragmentsMap();
-            for (String parentSampleKey : fragmentsGroupsMap.keySet()) {
-
-                ArrayList<FragmentToCreateJson> fragments = fragmentsGroupsMap.get(parentSampleKey);
-
-                Sample parentSample = sampleRepository.findByName(parentSampleKey).get();
-                Actor actor = parentSample.getActor();
-                BiologicOrigin biologicOrigin = parentSample.getBiologicOrigin();
-                Study study = parentSample.getStudy();
-
-                Treatments treatments = parentSample.getTreatments();
-                if (treatments == null) {
-                    treatments = new Treatments(null, null, null, null);
-                    treatments = treatmentsRepository.save(treatments);
-                    parentSample.setTreatments(treatments);
-                    parentSample = sampleRepository.save(parentSample);
-
-                }
-
-                Integer rank = 0;
-                Set<TreatmentsApplication> treatmentsApplicationSet = treatments.getTreatmentsApplications();
-                if (treatmentsApplicationSet != null) {
-                    rank = treatmentsApplicationSet.size();
-                }
-
-                String protocolName = "Frag-"+ parentSample.getName()+"-"+todayString;
-
-                SeparationResult separationResult =  new SeparationResult("ResultOf_"+protocolName, null, /*separations*/ null,
-                        null, null, /*studies*/ null, null, null);
-                separationResult = separationResultRepository.save(separationResult);
-
-
-                ProtocolApplication protocolApplication = new ProtocolApplication(actor, null, protocolName, today,
-                        null, null, null, null,
-                        /*Set<SampleFamily> sampleFamilies*/ null, null, null,
-                        /*Set<TreatmentsApplication> treatmentsApplications*/ null, null);
-
-                protocolApplication = protocolApplicationRepository.save(protocolApplication);
-
-                TreatmentsApplicationId treatmentsApplicationId = new TreatmentsApplicationId(treatments.getId(), protocolApplication.getId());
-                TreatmentsApplication treatmentsApplication = new TreatmentsApplication(treatmentsApplicationId, protocolApplication, treatments, rank);
-                treatmentsApplicationRepository.save(treatmentsApplication);
-
-
-                for (FragmentToCreateJson fragment : fragments) {
-
-                    Sample sample = new Sample(fragment.getName(), actor, biologicOrigin, study, null,
-                            fragment.getDescription(), fragment.getVolume(), "Available", fragment.getQuantity(),
-                            parentSample.getOriginalName(), parentSample.getRadioactivity(), parentSample.getToxicity(), today,
-                            null, null, null, null, null, null, null);
-
-
-                    sample = sampleRepository.save(sample);
-
-
-                    SampleFamilyId sampleFamilyId = new SampleFamilyId(parentSample.getName(), sample.getName());
-                    SampleFamily sampleFamily = new SampleFamily(sampleFamilyId, protocolApplication, sample, parentSample);
-                    sampleFamily = sampleFamilyRepository.save(sampleFamily);
-
-                    SampleLocator sampleLocator = new SampleLocator(sample, separationResult);
-                    sampleLocator = sampleLocatorRepository.save(sampleLocator);
-
-
-                    sampleJsons.add(Converter.convert(sample, null));
-                }
-
-
-
-
-                SamplesSet samplesSet = new SamplesSet(separationResult, fragments.size());
-                samplesSet = samplesSetRepository.save(samplesSet);
-                separationResult.setSamplesSet(samplesSet);
-                separationResult = separationResultRepository.save(separationResult);
-
-                Aliquotage aliquotage = new Aliquotage(null, fragments.size());
-                Separation separation = new Separation(protocolApplication, separationResult, aliquotage, null, null, null, null);
-                aliquotage.setSeparation(separation);
-                protocolApplication.setSeparation(separation);
-                aliquotage = aliquotageRepository.save(aliquotage);
-                separation = separationRepository.save(separation);
-
-            }
-
-            DatabaseVersionManager.getSingleton().bumpVersion(StudyJson.class, null);
-
-
-            return new ResponseEntity(sampleJsons, HttpStatus.OK);
-
+        return new ResponseEntity<>(fragmentCreationService.createFragments(fragmentsGroupToCreateJson), HttpStatus.OK);
     }
 
     @Transactional

@@ -309,7 +309,7 @@ public class PathManager {
                 LOGGER.debug(" ----> 4. RESEARCH_VALUE ");
                 //Get Study Path
                 if (acqContext.getSampleDescriptor() != null && acqContext.getSampleDescriptor().getName() !=null){
-                    String rawTagName = PathTag.RAW;
+                    String rawTagName = PathTag.RAW.toString();
 
                   LOGGER.debug(" --- 4.a Will get Sample {}", acqContext.getSampleDescriptor().getName().trim());
 
@@ -354,7 +354,7 @@ public class PathManager {
     }
 
     private String getExistingAcqPath(ProtocolApplication protocolApplication) {
-        String rawTagName = PathTag.RAW;
+        String rawTagName = PathTag.RAW.toString();
 
         //if only one acquisition is retrieved, and no other feature is specified (nature or spectrometer), the path is taken from it
         if (protocolApplication != null) {

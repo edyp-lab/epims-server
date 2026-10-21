@@ -17,8 +17,19 @@
 
 package fr.edyp.epims.database.dao;
 
+import fr.edyp.epims.database.entities.Plate;
 import fr.edyp.epims.database.entities.Robot;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
 
 public interface RobotRepository  extends JpaRepository<Robot, Integer> {
+
+
+  @Query("select distinct r from Robot r join r.instrument instrument "
+          + "where instrument.manufacturer = :manufact")
+  List<Robot> findByManufacturer(@Param("manufact") String manufacturer);
+
 }
