@@ -127,7 +127,7 @@ public class ProtocolApplicationController {
                 AcquisitionFile acquisitionFile = fileLinkOpt.get();
                 System.out.println("Done "+pa.getId()+"   "+nameFileSrc+"   "+pa.getName());
                 acquisitionFile.setIdFk(pa.getId());
-                acquisitionFile.setProtocolApplication(null);
+//                acquisitionFile.setProtocolApplication(null);
                 acquisitionFileRepository.save(acquisitionFile);
 
             }

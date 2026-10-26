@@ -8,19 +8,19 @@ import jakarta.persistence.Entity;
 public class AcquisitionFile extends FileLink implements java.io.Serializable {
 
 
-    private ProtocolApplication protocolApplication;
+//    private ProtocolApplication protocolApplication;
 
 
     public AcquisitionFile() {
     }
 
-
-    public ProtocolApplication getProtocolApplication() {
-        return this.protocolApplication;
-    }
-
-    public void setProtocolApplication(ProtocolApplication protocolApplication) {
-        this.protocolApplication = protocolApplication;
-    }
+//
+//    public ProtocolApplication getProtocolApplication() {
+//        return this.protocolApplication;
+//    }
+//
+//    public void setProtocolApplication(ProtocolApplication protocolApplication) {
+//        this.protocolApplication = protocolApplication;
+//    }
 
 }

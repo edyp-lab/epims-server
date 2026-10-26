@@ -53,10 +53,6 @@ import java.awt.Point;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileTime;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -128,32 +124,6 @@ public class CellenOneController {
     WellRepository wellRepository;
 
 
-    // VDS TO REMOVE,use cellenonemanipszip
-//    @GetMapping("/cellenonemanips")
-//    public ResponseEntity<List<CellenOneManipJson>> getCellenOneManips() {
-//        List<CellenOneManipJson> manipList = new ArrayList<>();
-//
-//        File cellenoneRootDir = getCellenOneRootDir();
-//
-//        File[] subdirs = cellenoneRootDir.listFiles(File::isDirectory);
-//        if (subdirs != null) {
-//            for (File subdir : subdirs) {
-//                if(! PreferencesKeys.CELLENONE_DONE_FOLDER.equals(subdir.getName()) ){
-//                    String manipName = subdir.getName();
-//                    Date creationDate = getFolderCreationDate(subdir);
-//
-//                    ArrayList<CellenOneRunJson> runs = readRunsFromManipFolder(subdir, manipName);
-//                    CellenOneManipJson manipJson = new CellenOneManipJson(manipName, creationDate, null, runs);
-//                    manipList.add(manipJson);
-//                }
-//            }
-//        }
-//
-//        manipList.sort(Comparator.comparing(CellenOneManipJson::getName, String.CASE_INSENSITIVE_ORDER));
-//
-//        return new ResponseEntity<>(manipList, HttpStatus.OK);
-//    }
-
     /**
      * Retrieve a list of CellenOneManipJson found on pending "import" zone.
      * CellenOne are identified if there is a zip file and an associated json file with same name
@@ -211,8 +181,6 @@ public class CellenOneController {
             throw new EpimServerException(EpimsErrorCode.UNAUTHORIZED_ACCESS, "Unauthorized access to study: " + studyId);
         }
 
-//        List<Robot> scienionRobots =  robotRepository.findByManufacturer("Scienion");
-//        Robot aRobot = scienionRobots.stream().filter(r -> r.getId() == robotId).toList().get(0);
         List<Plate> studyPlates =plateRepository.findByStudyIdWithSamples(studyId);
         List<Plate> validPlates = studyPlates.stream().filter(pl -> {
            long nb = pl.getRunRobots().stream().filter(rr -> rr.getRobot().getId() == robotId).count();
@@ -259,7 +227,7 @@ public class CellenOneController {
 
         //  Copy data file in Study folder
         LOGGER.debug("  --- CellenOne Import Step 3.: TRANSFER and CREATE DATA ");
-        transferCellenOneData(importCOManipProperties, study, manipFiles, runRobotByPlateName);
+        transferCellenOneData(importCOManipProperties, study, manipFiles, runRobotByPlateName, createdSampletoCoSample);
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
@@ -268,7 +236,7 @@ public class CellenOneController {
         return new ResponseEntity<>("Imported", HttpStatus.OK);
     }
 
-    class CellenOneSampleInfo {
+    static class CellenOneSampleInfo {
         CellenOneSample coSample;
         String runName;
 
@@ -293,9 +261,13 @@ public class CellenOneController {
             throw new EpimServerException(EpimsErrorCode.CELLENONE_ROOT_ERROR, "Invalid JSON for manip "+importCOManipProperties.getManipulation()+": "+e.getMessage());
         }
 
-        Map<String, RunRobot> runRobotPlateMap = createRunRobotProtocolApps(importCOManipProperties, manipJson,plateByFinalName, actor);
+        Map<String, RunRobot> runRobotPlateMap = createRunRobotProtocolApps(importCOManipProperties, manipJson,plateByFinalName, plateFinalNameByCOPlateKey, actor);
         createWellsSupport(cellenOneSamplesBySampleJson, runRobotPlateMap, plateByFinalName,plateFinalNameByCOPlateKey);
         return runRobotPlateMap;
+    }
+
+    private static String getRunPlateKey(String runName, String plateName) {
+        return runName + "::" + plateName;
     }
 
     private  void createWellsSupport(Map<SampleJson, CellenOneSampleInfo> cellenOneSamplesBySampleJson, Map<String, RunRobot> runRobotPlateMap, Map<String, Plate> plateByName,Map<String, String> plateFinalNameByCOPlateKey){
@@ -325,22 +297,35 @@ public class CellenOneController {
                 }
             }
 
-            RunRobot runRobot =  runRobotPlateMap.get(currentPlate.getName());
+            RunRobot runRobot =  runRobotPlateMap.get(getRunPlateKey(coSampleInfo.runName, currentPlate.getName()));
             TreatmentsApplicationId treatmentsApplicationId = new TreatmentsApplicationId(treatments.getId(), runRobot.getId());
             TreatmentsApplication treatmentsApplication = new TreatmentsApplication(treatmentsApplicationId, runRobot.getProtocolApplication(), treatments, rank);
             treatmentsApplicationRepository.save(treatmentsApplication);
         });
     }
 
-    private  Map<String, RunRobot> createRunRobotProtocolApps(CellenOneImportJson importCOManipProperties, CellenOneManipJson manipJson, Map<String, Plate> plateByName, Actor actor){
+    /**
+     * Create one ProtocolApplication / RunRobot for each distinct (CellenOne run, ePims plate) of the plate assignments.
+     * @return map of created RunRobot by run/plate key (see getRunPlateKey)
+     */
+    private  Map<String, RunRobot> createRunRobotProtocolApps(CellenOneImportJson importCOManipProperties, CellenOneManipJson manipJson, Map<String, Plate> plateByName, Map<String, String> plateFinalNameByCOPlateKey, Actor actor){
 
         Date mDate = MiscUtils.asDate(manipJson.getDate());
         Robot robot = robotRepository.findById(importCOManipProperties.getRobot()).orElseThrow(() -> new EpimServerException(EpimsErrorCode.CELLENONE_ROOT_ERROR, "Unable to found Robot with Id : " + importCOManipProperties.getRobot()));
-        HashMap<String, RunRobot> paByPlateName = new HashMap<>();
-        boolean useIndex = plateByName.size()  > 1;
+        HashMap<String, RunRobot> paByRunPlateKey = new HashMap<>();
+
+        // Distinct (run, ePims plate) couples, keeping plate assignments order
+        Map<String, String> plateNameByRunPlateKey = new LinkedHashMap<>();
+        for (CellenOneImportJson.PlateAssignment plateAssignment : importCOManipProperties.getPlateAssignments()) {
+            String plateName = plateFinalNameByCOPlateKey.get(plateAssignment.getRun() + plateAssignment.getSourcePlate());
+            plateNameByRunPlateKey.putIfAbsent(getRunPlateKey(plateAssignment.getRun(), plateName), plateName);
+        }
+
+        boolean useIndex = plateNameByRunPlateKey.size()  > 1;
         int index =0;
-        for(String plateName : plateByName.keySet()) {
-            String paName = useIndex ? importCOManipProperties.getManipulation() + "_runRobot"+index++ : importCOManipProperties.getManipulation() + "_runRobot" ;
+        for(Map.Entry<String, String> entry : plateNameByRunPlateKey.entrySet()) {
+            String plateName = entry.getValue();
+            String paName = useIndex ? importCOManipProperties.getManipulation() + "_runRobot_"+index++ : importCOManipProperties.getManipulation() + "_runRobot" ;
 
             ProtocolApplication protocolApplication = new ProtocolApplication(actor, null, paName, mDate, null, null,
                     null, null, null, null, null, null, null /*runRobot*/);
@@ -352,9 +337,9 @@ public class CellenOneController {
 
             runRobot = runRobotRepository.save(runRobot);
             protocolApplication = protocolApplicationRepository.save(protocolApplication);
-            paByPlateName.put(plateName, runRobot);
+            paByRunPlateKey.put(entry.getKey(), runRobot);
         }
-        return paByPlateName;
+        return paByRunPlateKey;
     }
 
 
@@ -443,7 +428,7 @@ public class CellenOneController {
         return "CellenOne run=" + run.getName() + ", source=" + sample.getSource() + ", plate=" + sample.getPlate() + ", coordinate=" + coordinate.x + ":" + coordinate.y;
     }
 
-    private void transferCellenOneData(CellenOneImportJson request, Study study, File[] manipFiles, Map<String, RunRobot> runRobotByPlateName ) {
+    private void transferCellenOneData(CellenOneImportJson request, Study study, File[] manipFiles, Map<String, RunRobot> runRobotByPlateName,Map<SampleJson, CellenOneSampleInfo> createdSampletoCoSample ) {
         try {
 
             String studyPath = pathManager.getFilesPath(study, PathTag.ANNOTATION.toString(), true);
@@ -453,9 +438,9 @@ public class CellenOneController {
             }
 
             Path studyDir = Path.of(studyPath);
-            Path doneDir = getCellenOneDONEPath().toPath();
+//            Path doneDir = getCellenOneDONEPath().toPath();
             File zipFile = null;
-            long zipSize = 0l;
+            long zipSize = 0L;
             for (File file : manipFiles) {
                 if (FilenameUtils.getExtension(file.getName()).equals("zip")) {
                     zipFile = file;
@@ -464,61 +449,120 @@ public class CellenOneController {
 
                 Path sourcePath = file.toPath();
                 Path destination = studyDir.resolve(file.getName());
-                Files.copy(sourcePath, destination, StandardCopyOption.REPLACE_EXISTING);
-                Path donePath = doneDir.resolve(file.getName());
-                Files.move(sourcePath, donePath, StandardCopyOption.REPLACE_EXISTING);
+                fr.edyp.epims.util.FileUtils.secureMove(sourcePath, destination);
+//                Files.copy(sourcePath, destination, StandardCopyOption.REPLACE_EXISTING);
+//                Path donePath = doneDir.resolve(file.getName());
+//                Files.move(sourcePath, donePath, StandardCopyOption.REPLACE_EXISTING);
             }
-
             assert zipFile != null;
-            // ----- Create Associated file data
-            int studyId = study.getId();
+            AttachedFile zipAttachedFile = createZipAttachedFile(runRobotByPlateName, zipFile, relativeStudyPath, (double) zipSize);
 
-            // Create AttachedFile without fileLinks and fileTags
-            List<RunRobot> allRunRobots = runRobotByPlateName.values().stream().toList();
-            Date manipDate = allRunRobots.get(0).getProtocolApplication().getDate();
-            //Create One attached file for zip file to associated to all run robots
-            AttachedFile attachedFileToCreate = new AttachedFile();
-            attachedFileToCreate.setDate(manipDate);
-            attachedFileToCreate.setName(zipFile.getName());
-            attachedFileToCreate.setPath(relativeStudyPath);
-            attachedFileToCreate.setSizeMo((double) zipSize);
-            attachedFileToCreate.setArchived(null);
+            createSampleImageAttachedFile(createdSampletoCoSample,  zipAttachedFile);
 
-            Set<FileLink> fileLinkSet = new HashSet<>();
-            attachedFileToCreate.setFileLinks(fileLinkSet);
-            Set<FileTags> fileTagsSet = new HashSet<>();
-            attachedFileToCreate.setFileTagses(fileTagsSet);
-            AttachedFile attachedFileCreated = attachedFileRepository.save(attachedFileToCreate);
-
-            // Associate to  ANNOTATION tag to files
-            Tag annotationTag = tagRepository.findByName(PathTag.ANNOTATION.name()).get(); //SHOULD exist
-            FileTagsId fileTagsId = new FileTagsId(attachedFileCreated.getId(), PathTag.ANNOTATION.name());
-            FileTags fileTag = new FileTags(fileTagsId, attachedFileCreated, annotationTag, 0);
-            FileTags fileTagCreated = fileTagRepository.save(fileTag);
-            fileTagsSet.add(fileTagCreated);
-            attachedFileCreated = attachedFileRepository.save(attachedFileCreated);
-
-            for(RunRobot rr : allRunRobots) {
-
-                // Create FileLink
-                FileLink fileLinkToCreate = new FileLink();
-                fileLinkToCreate.setAssociatedEntity("run_robot");
-                fileLinkToCreate.setAttachedFile(attachedFileCreated);
-                fileLinkToCreate.setIdFk(rr.getId());
-                FileLink fileLinkCreated = fileLinkRepository.save(fileLinkToCreate);
-
-                // Create FileTag
-                fileLinkSet.add(fileLinkCreated);
-                fileLinkCreated.setAttachedFile(attachedFileCreated);
-                fileLinkCreated = fileLinkRepository.save(fileLinkCreated);
-
-            }
-            attachedFileRepository.save(attachedFileToCreate);
 
         } catch (IOException e) {
             LOGGER.error("Failed to transfer CellenOne sources for {}", request.getManipulation(), e);
             throw new EpimServerException(EpimsErrorCode.STUDY_DIRECTORY_ACCESS_ERROR, "Failed to transfer CellenOne source data");
         }
+    }
+
+    private void createSampleImageAttachedFile(Map<SampleJson, CellenOneSampleInfo> createdSampletoCoSample,   AttachedFile zipAttachedFile ) {
+
+        String relativeFilePath = zipAttachedFile.getPath()+"/"+zipAttachedFile.getName();
+
+        for(SampleJson nextSample : createdSampletoCoSample.keySet()){
+            String sampleKey = nextSample.getName();
+            List<CellenOneSample.DropSamples> dropSamples =  createdSampletoCoSample.get(nextSample).coSample.getDropSamples();
+
+            dropSamples.forEach(dropSpl ->{
+                String imageFilePath =  dropSpl.getImageFilePath();
+                int index = imageFilePath.lastIndexOf("/");
+                if( index == -1)
+                    index = imageFilePath.lastIndexOf("\\");
+                String fileName = index>=0 ?  imageFilePath.substring(index+1) : imageFilePath;
+                String filePath = index>=0 ?  imageFilePath.substring(0,index) : "";
+                String relativeImagePath = relativeFilePath +"::"+filePath;
+
+                //Create One attached file for drop Sample image  to associated to sample
+                AttachedFile attachedFileToCreate = new AttachedFile();
+                attachedFileToCreate.setDate(nextSample.getCreationDate());
+                attachedFileToCreate.setName(fileName);
+                attachedFileToCreate.setPath(relativeImagePath);
+                attachedFileToCreate.setSizeMo((double) 0);
+                attachedFileToCreate.setArchived(null);
+
+                Set<FileLink> fileLinkSet = new HashSet<>();
+                attachedFileToCreate.setFileLinks(fileLinkSet);
+                Set<FileTags> fileTagsSet = new HashSet<>();
+                attachedFileToCreate.setFileTagses(fileTagsSet);
+                AttachedFile attachedFileCreated = attachedFileRepository.save(attachedFileToCreate);
+
+                // Associate to Scan tag to files
+                Tag annotationTag = tagRepository.findByName(PathTag.ANNOTATION.name()).get(); //SHOULD exist
+                FileTagsId fileTagsId = new FileTagsId(attachedFileCreated.getId(), PathTag.ANNOTATION.name());
+                FileTags fileTag = new FileTags(fileTagsId, attachedFileCreated, annotationTag, 0);
+                FileTags fileTagCreated = fileTagRepository.save(fileTag);
+                fileTagsSet.add(fileTagCreated);
+                attachedFileCreated = attachedFileRepository.save(attachedFileCreated);
+
+                // Create FileLink
+                FileLink fileLinkToCreate = new SampleFile();
+                fileLinkToCreate.setAttachedFile(attachedFileCreated);
+                fileLinkToCreate.setNameFk(sampleKey);
+                FileLink fileLinkCreated = fileLinkRepository.save(fileLinkToCreate);
+
+                // Create FileTag
+                fileLinkSet.add(fileLinkCreated);
+                fileLinkCreated.setAttachedFile(attachedFileCreated);
+                fileLinkRepository.save(fileLinkCreated);
+            });
+        }
+
+    }
+
+    private AttachedFile createZipAttachedFile(Map<String, RunRobot> runRobotByPlateName, File zipFile, String relativeStudyPath, double zipSize) {
+        // ----- Create Associated file data
+
+        // Create AttachedFile without fileLinks and fileTags
+        List<RunRobot> allRunRobots = runRobotByPlateName.values().stream().toList();
+        Date manipDate = allRunRobots.get(0).getProtocolApplication().getDate();
+        //Create One attached file for zip file to associated to all run robots
+        AttachedFile attachedFileToCreate = new AttachedFile();
+        attachedFileToCreate.setDate(manipDate);
+        attachedFileToCreate.setName(zipFile.getName());
+        attachedFileToCreate.setPath(relativeStudyPath);
+        attachedFileToCreate.setSizeMo(zipSize);
+        attachedFileToCreate.setArchived(null);
+
+        Set<FileLink> fileLinkSet = new HashSet<>();
+        attachedFileToCreate.setFileLinks(fileLinkSet);
+        Set<FileTags> fileTagsSet = new HashSet<>();
+        attachedFileToCreate.setFileTagses(fileTagsSet);
+        AttachedFile attachedFileCreated = attachedFileRepository.save(attachedFileToCreate);
+
+        // Associate to  ANNOTATION tag to files
+        Tag annotationTag = tagRepository.findByName(PathTag.ANNOTATION.name()).get(); //SHOULD exist
+        FileTagsId fileTagsId = new FileTagsId(attachedFileCreated.getId(), PathTag.ANNOTATION.name());
+        FileTags fileTag = new FileTags(fileTagsId, attachedFileCreated, annotationTag, 0);
+        FileTags fileTagCreated = fileTagRepository.save(fileTag);
+        fileTagsSet.add(fileTagCreated);
+        attachedFileCreated = attachedFileRepository.save(attachedFileCreated);
+
+        for(RunRobot rr : allRunRobots) {
+
+            // Create FileLink
+            FileLink fileLinkToCreate = new RunRobotFile();
+            fileLinkToCreate.setAttachedFile(attachedFileCreated);
+            fileLinkToCreate.setIdFk(rr.getId());
+            FileLink fileLinkCreated = fileLinkRepository.save(fileLinkToCreate);
+
+            // Create FileTag
+            fileLinkSet.add(fileLinkCreated);
+            fileLinkCreated.setAttachedFile(attachedFileCreated);
+            fileLinkRepository.save(fileLinkCreated);
+
+        }
+        return attachedFileRepository.save(attachedFileCreated);
     }
 
     private Actor getAuthenticatedActor(Authentication authentication) {
@@ -724,31 +768,18 @@ public class CellenOneController {
         return cellenoneRootDir;
     }
 
-    private File getCellenOneDONEPath() {
-        Preferences preferences = ServerEpimsPreferences.root();
-        String cellenoneRoot = preferences.get(PreferencesKeys.CELLENONE_ROOT, null);
-        File doneDir = null;
-        if(! (cellenoneRoot == null)) {
-            doneDir = new File(cellenoneRoot, PreferencesKeys.CELLENONE_DONE_FOLDER);
-            if(!doneDir.exists()){
-                LOGGER.info(" Create CellenOne DONE direcroy: {}",doneDir.getAbsolutePath());
-                doneDir.mkdirs();
-            }
-        }
-     return doneDir;
-    }
+//    private File getCellenOneDONEPath() {
+//        Preferences preferences = ServerEpimsPreferences.root();
+//        String cellenoneRoot = preferences.get(PreferencesKeys.CELLENONE_ROOT, null);
+//        File doneDir = null;
+//        if(! (cellenoneRoot == null)) {
+//            doneDir = new File(cellenoneRoot, PreferencesKeys.CELLENONE_DONE_FOLDER);
+//            if(!doneDir.exists()){
+//                LOGGER.info(" Create CellenOne DONE direcroy: {}",doneDir.getAbsolutePath());
+//                doneDir.mkdirs();
+//            }
+//        }
+//     return doneDir;
+//    }
 
-
-    private Date getFolderCreationDate(File folder) {
-        try {
-            BasicFileAttributes attributes = Files.readAttributes(folder.toPath(), BasicFileAttributes.class);
-            FileTime creationTime = attributes.creationTime();
-            if (creationTime != null && creationTime.toMillis() > 0) {
-                return new Date(creationTime.toMillis());
-            }
-        } catch (Exception e) {
-            LOGGER.debug("Unable to read creationTime attribute for folder: {}", folder.getAbsolutePath(), e);
-        }
-        return new Date(folder.lastModified());
-    }
 }
