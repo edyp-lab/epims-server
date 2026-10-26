@@ -47,10 +47,24 @@ jwt.secret=[A UNIQUE KEY]
 * merge some common properties between application.properties & EpimsServerPreferences.properties
 
 ## Releases
- 
-### Version 3.2.x
 
+### Version 3.3.0-SNAPSHOT
+
+* Fix instrument creation error
+* Added acquisition properties (methodName, injectionVolume and vialInformation) management 
 * Add Category in Study (Sample and Acquisition) to distinguish between Research, QC, Service or Control studies
+* Add Import for Cellenone data.
+  * Add associated Controller to list or create CellenOne Manip date
+  * Add endpoint to get specific robots, study's sample or potential plates  
+  * Create corresponding data :
+    * Create Sample Fractionation
+    * Create Plate and Run Robot, 
+    * Create associated "Attached Files"  
+
+
+### Version 3.2.1
+
+
 * Add controller for instrument Log file append
 * Improve MGF controller to allow user to specify acquisition name
 * Allow FTP port definition
