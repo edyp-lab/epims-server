@@ -34,7 +34,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 @RestController
@@ -68,33 +67,6 @@ public class SampleController {
     SampleTypeRepository sampleTypeRepository;
 
     @Autowired
-    TreatmentsRepository treatmentsRepository;
-
-    @Autowired
-    ProtocolApplicationRepository protocolApplicationRepository;
-
-    @Autowired
-    TreatmentsApplicationRepository treatmentsApplicationRepository;
-
-    @Autowired
-    AliquotageRepository aliquotageRepository;
-
-    @Autowired
-    SeparationRepository separationRepository;
-
-    @Autowired
-    SampleFamilyRepository sampleFamilyRepository;
-
-    @Autowired
-    SampleLocatorRepository sampleLocatorRepository;
-
-    @Autowired
-    SeparationResultRepository separationResultRepository;
-
-    @Autowired
-    SamplesSetRepository samplesSetRepository;
-
-    @Autowired
     PathManager pathManager;
 
     @Autowired
@@ -116,7 +88,7 @@ public class SampleController {
             // We could add a check, but it is the case for the moment.
 
             Optional<Study> studyOpt = studyRepository.findById(samples.get(0).getStudy());
-            if (!studyOpt.isPresent()) {
+            if (studyOpt.isEmpty()) {
                 throw new DataIntegrityViolationException("Study not found");
             }
             Study study = studyOpt.get();
@@ -128,7 +100,7 @@ public class SampleController {
             // We could add a check, but it is the case for the moment.
 
             Optional<Actor> actorOpt = actorRepository.findById(samples.get(0).getActorKey());
-            if (!actorOpt.isPresent()) {
+            if (actorOpt.isEmpty()) {
                 throw new DataIntegrityViolationException("Actor not found");
             }
             Actor actor = actorOpt.get();
@@ -143,7 +115,7 @@ public class SampleController {
             BiologicOriginJson biologicOriginJson = samples.get(0).getBiologicOriginJson();
             Integer biologicOriginJsonId = biologicOriginJson.getId();
 
-            BiologicOrigin biologicOrigin = null;
+            BiologicOrigin biologicOrigin;
             if (biologicOriginJsonId == null) {
 
                 // we must create it or retrieve it
@@ -151,15 +123,15 @@ public class SampleController {
                 SampleKind sampleKind = null;
                 if (biologicOriginJson.getSampleKind() != null) {
                     Optional<SampleKind> sampleKindOpt = sampleKindRepository.findById(biologicOriginJson.getSampleKind());
-                    if (!sampleKindOpt.isPresent()) {
+                    if (sampleKindOpt.isEmpty()) {
                         throw new DataIntegrityViolationException("Sample Kind not found");
                     }
                     sampleKind = sampleKindOpt.get();
                 }
 
-                SampleSpecies sampleSpecies = null;
+                SampleSpecies sampleSpecies;
                 Optional<SampleSpecies> sampleSpeciesOpt = sampleSpeciesRepository.findById(biologicOriginJson.getSampleSpecies());
-                if (!sampleSpeciesOpt.isPresent()) {
+                if (sampleSpeciesOpt.isEmpty()) {
                     throw new DataIntegrityViolationException("SampleSpecies not found");
                 }
                 sampleSpecies = sampleSpeciesOpt.get();
@@ -167,7 +139,7 @@ public class SampleController {
                 SampleSubcellularLocalisation sampleSubcellularLocalisation = null;
                 if (biologicOriginJson.getSampleSubcellularLocalisation() != null) {
                     Optional<SampleSubcellularLocalisation> sampleSubcellularLocalisationOpt = sampleSubcellularLocalisationRepository.findById(biologicOriginJson.getSampleSubcellularLocalisation());
-                    if (!sampleSubcellularLocalisationOpt.isPresent()) {
+                    if (sampleSubcellularLocalisationOpt.isEmpty()) {
                         throw new DataIntegrityViolationException("SampleSubcellularLocalisation not found");
                     }
                     sampleSubcellularLocalisation = sampleSubcellularLocalisationOpt.get();
@@ -176,7 +148,7 @@ public class SampleController {
                 SampleType sampleType = null;
                 if (biologicOriginJson.getSampleType()  != null) {
                     Optional<SampleType> sampleTypeOpt = sampleTypeRepository.findById(biologicOriginJson.getSampleType());
-                    if (!sampleTypeOpt.isPresent()) {
+                    if (sampleTypeOpt.isEmpty()) {
                         throw new DataIntegrityViolationException("SampleType not found");
                     }
                     sampleType = sampleTypeOpt.get();
@@ -198,7 +170,7 @@ public class SampleController {
 
             } else {
                 Optional<BiologicOrigin> biologicOriginOpt = biologicOriginRepository.findById(biologicOriginJsonId);
-                if (!biologicOriginOpt.isPresent()) {
+                if (biologicOriginOpt.isEmpty()) {
                     throw new DataIntegrityViolationException("BiologicOrigin not found");
                 }
                 biologicOrigin = biologicOriginOpt.get();
@@ -229,7 +201,7 @@ public class SampleController {
 
             DatabaseVersionManager.getSingleton().bumpVersion(StudyJson.class, null);
 
-            return new ResponseEntity(sampleJsons, HttpStatus.OK);
+            return new ResponseEntity<>(sampleJsons, HttpStatus.OK);
 
     }
 
@@ -239,27 +211,27 @@ public class SampleController {
     public ResponseEntity<SampleJson> getSampleForName(@PathVariable("samplename") String samplename) {
 
         Optional<Sample> sampleOpt = sampleRepository.findByName(samplename);
-        if (! sampleOpt.isPresent()) {
-            return new ResponseEntity<SampleJson>((SampleJson) null, HttpStatus.OK);
+        if (sampleOpt.isEmpty()) {
+            return new ResponseEntity<>((SampleJson) null, HttpStatus.OK);
         }
 
         Sample sample = sampleOpt.get();
 
-        return new ResponseEntity<SampleJson>(Converter.convert(sample, null), HttpStatus.OK);
+        return new ResponseEntity<>(Converter.convert(sample, null), HttpStatus.OK);
     }
 
     @GetMapping("/studypathforsamplename/{samplename}")
     public ResponseEntity<StudyPathJson> getStudyPathForSampleName(@PathVariable("samplename") String samplename) {
 
-        StudyPathJson studyPathJson = null;
+        StudyPathJson studyPathJson;
 
         Optional<Sample> sampleOpt = sampleRepository.findByName(samplename);
         if (sampleOpt.isPresent()) {
             Study s = sampleOpt.get().getStudy();
             studyPathJson = Converter.convert(s, pathManager.getStudyPath(s));
-            return new ResponseEntity<StudyPathJson>(studyPathJson, HttpStatus.OK);
+            return new ResponseEntity<>(studyPathJson, HttpStatus.OK);
         } else {
-            return new ResponseEntity<StudyPathJson>((StudyPathJson) null, HttpStatus.OK);
+            return new ResponseEntity<>((StudyPathJson) null, HttpStatus.OK);
         }
 
 
@@ -268,9 +240,8 @@ public class SampleController {
     @GetMapping("/samples/{id}")
     public ResponseEntity<List<SampleJson>> getSampleByStudyId(@PathVariable("id") int id) {
         try {
-            List<Sample> samples = new ArrayList<>();
 
-            ArrayList<SampleJson> list = new ArrayList();
+            ArrayList<SampleJson> list = new ArrayList<>();
 
             Optional<Study> studyData = studyRepository.findById(id);
             if (studyData.isPresent()) {
@@ -382,21 +353,18 @@ public class SampleController {
                         }
                     }
 
-                    Collections.sort(protocolApplicationJsonsList, new Comparator<ProtocolApplicationJson>() {
-                        @Override
-                        public int compare(ProtocolApplicationJson o1, ProtocolApplicationJson o2) {
-                            Date d2 = o2.getDate();
-                            Date d1 = o1.getDate();
-                            if ((d1 != null) && (d2 != null)) {
-                                if (d1.after(d2)) {
-                                    return 1;
-                                } else {
-                                    return -1;
-                                }
-
-                            }
-                            return o1.getId()-o2.getId();
+                    Collections.sort(protocolApplicationJsonsList, (o1, o2) -> {
+                      Date d2 = o2.getDate();
+                      Date d1 = o1.getDate();
+                      if ((d1 != null) && (d2 != null)) {
+                        if (d1.after(d2)) {
+                          return 1;
+                        } else {
+                          return -1;
                         }
+
+                      }
+                      return o1.getId() - o2.getId();
                     });
 
                     SampleJson sampleJson = Converter.convert(s, protocolApplicationJsonsList);
@@ -423,7 +391,7 @@ public class SampleController {
     public ResponseEntity modifySample(@RequestBody SampleJson sampleJson) {
 
         Optional<Sample> sampleOpt = sampleRepository.findById(sampleJson.getName());
-        if (!sampleOpt.isPresent()) {
+        if (sampleOpt.isEmpty()) {
             throw new DataIntegrityViolationException("Sample not found");
         }
 

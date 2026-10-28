@@ -291,10 +291,8 @@ public class CellenOneController {
                 currentSample.setTreatments(treatments);
                 sampleRepository.save(currentSample);
             } else {
-                Set<TreatmentsApplication> treatmentsApplicationSet = treatments.getTreatmentsApplications();
-                if (treatmentsApplicationSet != null) {
-                    rank = treatmentsApplicationSet.size();
-                }
+                Integer maxRank =treatmentsApplicationRepository.maxRank(treatments.getId());
+                rank = maxRank == null ? 0 : maxRank+1;
             }
 
             RunRobot runRobot =  runRobotPlateMap.get(getRunPlateKey(coSampleInfo.runName, currentPlate.getName()));

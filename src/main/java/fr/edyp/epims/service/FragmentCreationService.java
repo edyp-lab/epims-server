@@ -72,11 +72,10 @@ public class FragmentCreationService {
                 parentSample.setTreatments(treatments);
                 parentSample = sampleRepository.save(parentSample);
             }
-            Integer rank = 0;
-            Set<TreatmentsApplication> treatmentsApplicationSet = treatments.getTreatmentsApplications();
-            if (treatmentsApplicationSet != null) {
-                rank = treatmentsApplicationSet.size();
-            }
+            int rank = 0;
+            Integer maxRank =treatmentsApplicationRepository.maxRank(treatments.getId());
+            rank = maxRank == null ? 0 : maxRank+1;
+
             String protocolName = "Frag-" + parentSample.getName() + "-" + todayString;
             SeparationResult separationResult = separationResultRepository.save(new SeparationResult("ResultOf_" + protocolName, null, null, null, null, null, null, null));
             ProtocolApplication protocolApplication = protocolApplicationRepository.save(new ProtocolApplication(actor, null, protocolName, today, null, null, null, null, null, null, null, null, null));

@@ -189,7 +189,7 @@ public class RobotPlanningController {
 
         // Check existence of virtualPlate
         Optional<VirtualPlate> virtualPlatOpt = virtualPlateRepository.findByName(virtualPlateJson.getName());
-        if (! virtualPlatOpt.isPresent()) {
+        if (virtualPlatOpt.isEmpty()) {
             throw new DataIntegrityViolationException("Virtual Plate"+virtualPlateJson.getName()+"does not exist");
         }
         VirtualPlate virtualPlate = virtualPlatOpt.get();
@@ -296,13 +296,13 @@ public class RobotPlanningController {
 
         // Retrieve data in database from parameter
         Optional<VirtualPlate> plateOpt = virtualPlateRepository.findByName(closePlateJson.getPlateName());
-        if (! plateOpt.isPresent()) {
+        if (plateOpt.isEmpty()) {
             return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
         }
         VirtualPlate virtualPlate = plateOpt.get();
 
         Optional<Actor> actorOpt = actorRepository.findByLogin(closePlateJson.getActorLogin());
-        if (! actorOpt.isPresent()) {
+        if (actorOpt.isEmpty()) {
             return new ResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR);
         }
         Actor actor = actorOpt.get();
@@ -325,7 +325,7 @@ public class RobotPlanningController {
         runRobot = runRobotRepository.save(runRobot);
         protocolApplication = protocolApplicationRepository.save(protocolApplication);
 
-        HashSet<Sample> sampleSet = new HashSet();
+        HashSet<Sample> sampleSet = new HashSet<>();
 
         Set<VirtualWell> wellsSet = virtualPlate.getVirtualWells();
         for (VirtualWell virtualWell : wellsSet) {
@@ -353,17 +353,15 @@ public class RobotPlanningController {
 
         for (Sample sample : sampleSet) {
             Treatments treatments = sample.getTreatments();
-            Integer rank = 0;
+            int rank = 0;
             if (treatments == null) {
                 treatments = new Treatments();
                 treatmentsRepository.save(treatments);
                 sample.setTreatments(treatments);
                 sample = sampleRepository.save(sample);
             } else {
-                Set<TreatmentsApplication> treatmentsApplicationSet = treatments.getTreatmentsApplications();
-                if (treatmentsApplicationSet != null) {
-                    rank = treatmentsApplicationSet.size();
-                }
+                Integer maxRank =treatmentsApplicationRepository.maxRank(treatments.getId());
+                rank = maxRank == null ? 0 : maxRank+1;
             }
 
             TreatmentsApplicationId treatmentsApplicationId = new TreatmentsApplicationId(treatments.getId(), protocolApplication.getId());
