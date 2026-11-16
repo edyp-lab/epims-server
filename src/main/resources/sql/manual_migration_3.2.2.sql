@@ -9,7 +9,12 @@ ALTER TABLE public.sample ADD column  "category" varchar(255);
 ----------
 -- Create Robot entry for CellenOne  ---
 
---- Search non spetrometer instument : should be one
+--- Search non spetrometer instument : should be only robot ... 
+select * from instrument i where id not in (
+    select  i.id from instrument i , spectrometer s
+    where s.id  = i.id )
+	
+-- search for incorrect 	
 select id from instrument i where id not in (
     select  i.id from instrument i , spectrometer s
     where s.id  = i.id )
@@ -25,9 +30,10 @@ select id from instrument i where id not in (
 select * from instrument i where id not in (
     select  i.id from instrument i , spectrometer s
     where s.id  = i.id )
- and  i.manufacturer = 'Tecan'; -- and is Tecan
+ -- and  i.manufacturer = 'Tecan'; -- and is Tecan
 
--- Add Tecan instrument as robot
+-- Add Tecan instrument as robot if needed 
+select * from robot; -- if none and not Tecan add it
 insert into robot (id) select id from instrument i where id not in (
     select  i.id from instrument i , spectrometer s
     where s.id  = i.id ) and  i.manufacturer = 'Tecan';
@@ -35,6 +41,9 @@ insert into robot (id) select id from instrument i where id not in (
 select * from robot; -- should be one ;)
 
 -- Update run_robot to reference new created Tecan robot
+select * from run_robot rr where rr.robot is not null; -- none 
+select * from run_robot rr where rr.robot is null; --all 
+
 UPDATE run_robot rr
 SET robot = (
     SELECT i.id
@@ -47,6 +56,9 @@ SET robot = (
       AND i.manufacturer = 'Tecan'
 )
 WHERE rr.robot IS NULL;
+
+select * from run_robot rr where rr.robot is not null; -- all 
+select * from run_robot rr where rr.robot is null; -- none
 
 -- Add CellenOne  instrument and associated Robot
 insert into instrument ("name", manufacturer, model, status) values ('CellenOne_1', 'Scienion', 'CellenOne', 'available');
